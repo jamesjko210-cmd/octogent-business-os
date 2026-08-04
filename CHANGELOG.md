@@ -7,10 +7,11 @@ This log records verified Octogent changes before they are committed and publish
 ### Added
 
 - Agent Directory now includes **Clean up ended agents**, a reviewed bulk release for stale, stopped, or exited temporary terminal records. It does not remove permanent roles, role inboxes, shared memory, or audit history.
+- Project Swarms now protects the default Game Business and Research lanes while allowing an operator to remove a finished custom swarm through an explicit confirmation. Removing a custom lane preserves its permanent roles, terminal records, inboxes, shared memory, and audit history.
 
 ### Verification
 
-- Latest cleanup-control audit passed: core 6/6, API 235/235, and web 123/123 tests. Core/API/web TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
+- Latest swarm-lifecycle audit passed: core 6/6, API 236/236, and web 125/125 tests. Core/API/web TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
 
 ## 2026-08-05 - Public Repository Baseline
 

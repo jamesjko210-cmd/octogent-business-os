@@ -76,7 +76,7 @@ import {
   readHeaderValue,
 } from "./security";
 import { handleSessionHistoryRoute } from "./sessionHistoryRoutes";
-import { handleSwarmRegistryRoute } from "./swarmRegistryRoutes";
+import { handleSwarmRegistryItemRoute, handleSwarmRegistryRoute } from "./swarmRegistryRoutes";
 import { handleTelegramStatusRoute } from "./telegramRoutes";
 import {
   handleAuditLogRoute,
@@ -153,7 +153,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
       handleAgentRosterRoute,
     ],
   ],
-  ["swarms", [handleSwarmRegistryRoute]],
+  ["swarms", [handleSwarmRegistryRoute, handleSwarmRegistryItemRoute]],
   ["agent-manifests", [handleAgentManifestEvaluateRoute, handleAgentManifestsRoute]],
   ["operator-updates", [handleOperatorUpdatesRoute]],
   ["autonomous-skills", [handleAutonomousSkillsRoute]],

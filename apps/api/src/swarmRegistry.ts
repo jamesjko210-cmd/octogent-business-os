@@ -10,6 +10,7 @@ export type SwarmDefinition = {
 };
 
 export type SwarmRegistryEntry = SwarmDefinition & {
+  isDefault: boolean;
   state: AgentRosterState;
   roleCount: number;
   workingCount: number;
@@ -55,6 +56,8 @@ const DEFAULT_SWARMS: readonly SwarmDefinition[] = [
   },
 ];
 
+const DEFAULT_SWARM_IDS = new Set(DEFAULT_SWARMS.map((swarm) => swarm.id));
+
 const deriveSwarmState = (agents: readonly AgentRosterEntry[]): AgentRosterState => {
   if (agents.some((agent) => agent.state === "working")) return "working";
   if (agents.some((agent) => agent.state === "waiting")) return "waiting";
@@ -86,6 +89,7 @@ export const listSwarmRegistry = (
     const members = agents.filter((agent) => swarm.agentIds.includes(agent.id));
     return {
       ...swarm,
+      isDefault: DEFAULT_SWARM_IDS.has(swarm.id),
       state: deriveSwarmState(members),
       roleCount: members.length,
       workingCount: members.filter((agent) => agent.state === "working").length,
@@ -157,5 +161,20 @@ export const createSwarmRegistryStore = (projectStateDir: string) => {
     writeFileSync(swarmsPath, `${JSON.stringify({ swarms }, null, 2)}\n`, "utf8");
     return definition;
   };
-  return { create, list, swarmsPath };
+  const remove = (swarmId: string): SwarmDefinition => {
+    if (DEFAULT_SWARM_IDS.has(swarmId)) {
+      throw new Error("Default project swarms cannot be removed.");
+    }
+    const swarms = list();
+    const removed = swarms.find((swarm) => swarm.id === swarmId);
+    if (!removed) throw new Error("Custom project swarm not found.");
+    mkdirSync(dirname(swarmsPath), { recursive: true });
+    writeFileSync(
+      swarmsPath,
+      `${JSON.stringify({ swarms: swarms.filter((swarm) => swarm.id !== swarmId) }, null, 2)}\n`,
+      "utf8",
+    );
+    return removed;
+  };
+  return { create, list, remove, swarmsPath };
 };

@@ -243,6 +243,15 @@ export const buildSwarmRegistryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => 
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/swarms");
 };
 
+export const buildSwarmRegistryItemUrl = (
+  swarmId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/swarms/${encodeURIComponent(swarmId)}`;
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildGoalsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/goals";

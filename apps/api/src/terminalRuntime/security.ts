@@ -43,6 +43,7 @@ export type AuditEventType =
   | "agent_roster.loaded"
   | "swarm_registry.loaded"
   | "swarm_registry.created"
+  | "swarm_registry.removed"
   | "agent_manifests.loaded"
   | "agent_manifest.evaluated"
   | "autonomous_skills.loaded"

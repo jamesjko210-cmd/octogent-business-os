@@ -545,6 +545,44 @@ describe("createApiServer", () => {
     });
   });
 
+  it("removes only an operator-created swarm and preserves permanent roles", async () => {
+    const baseUrl = await startServer();
+    const createResponse = await fetch(`${baseUrl}/api/swarms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "school-project",
+        title: "School Project",
+        purpose: "Keeps school work separate.",
+        agentIds: ["research-triad"],
+      }),
+    });
+    expect(createResponse.status).toBe(201);
+
+    const rejectedDefaultResponse = await fetch(`${baseUrl}/api/swarms/game-business`, {
+      method: "DELETE",
+    });
+    expect(rejectedDefaultResponse.status).toBe(400);
+    await expect(rejectedDefaultResponse.json()).resolves.toEqual({
+      error: "Default project swarms cannot be removed.",
+    });
+
+    const removeResponse = await fetch(`${baseUrl}/api/swarms/school-project`, {
+      method: "DELETE",
+    });
+    expect(removeResponse.status).toBe(200);
+    await expect(removeResponse.json()).resolves.toEqual({ swarmId: "school-project" });
+
+    const swarmsResponse = await fetch(`${baseUrl}/api/swarms`);
+    await expect(swarmsResponse.json()).resolves.toEqual({
+      swarms: expect.not.arrayContaining([expect.objectContaining({ id: "school-project" })]),
+    });
+    const rolesResponse = await fetch(`${baseUrl}/api/agents`);
+    await expect(rolesResponse.json()).resolves.toEqual({
+      agents: expect.arrayContaining([expect.objectContaining({ id: "research-triad" })]),
+    });
+  });
+
   it("redacts and bounds durable channel messages before they are stored", async () => {
     const baseUrl = await startServer();
     const terminalResponse = await fetch(`${baseUrl}/api/terminals`, {

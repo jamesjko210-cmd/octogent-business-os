@@ -439,6 +439,20 @@
   line-height: 1.35;
 }
 
+.settings-swarm-protected,
+.settings-swarm-actions {
+  color: #9eb0c8;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.settings-swarm-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .settings-swarm-counts span {
   border: 1px solid #4d4839;
   color: #c8c1af;

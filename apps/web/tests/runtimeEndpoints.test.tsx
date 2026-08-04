@@ -15,6 +15,7 @@ import {
   buildMonitorFeedUrl,
   buildMonitorRefreshUrl,
   buildOperatorUpdatesUrl,
+  buildSwarmRegistryItemUrl,
   buildTelegramStatusUrl,
   buildTentacleGitCommitUrl,
   buildTentacleGitPullRequestMergeUrl,
@@ -79,6 +80,13 @@ describe("runtimeEndpoints", () => {
 
   it("builds terminal creation URL on same origin by default", () => {
     expect(buildTerminalsUrl()).toBe("/api/terminals");
+  });
+
+  it("builds a custom swarm item URL on same origin and configured runtime origins", () => {
+    expect(buildSwarmRegistryItemUrl("school-project")).toBe("/api/swarms/school-project");
+    expect(buildSwarmRegistryItemUrl("school project", "https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/swarms/school%20project",
+    );
   });
 
   it("builds safe terminal cleanup URL on same origin and configured runtime origins", () => {

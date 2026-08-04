@@ -96,7 +96,7 @@ describe("listSwarmRegistry", () => {
     );
   });
 
-  it("persists a valid local project swarm and rejects a duplicate ID", () => {
+  it("persists, removes, and protects project swarms", () => {
     const projectStateDir = mkdtempSync(join(tmpdir(), "octogent-swarms-"));
     const agents = [
       {
@@ -130,6 +130,22 @@ describe("listSwarmRegistry", () => {
       expect(createSwarmRegistryStore(projectStateDir).list()).toEqual([
         expect.objectContaining({ id: "school-project" }),
       ]);
+      expect(store.remove("school-project")).toMatchObject({ id: "school-project" });
+      expect(createSwarmRegistryStore(projectStateDir).list()).toEqual([]);
+      expect(() => store.remove("game-business")).toThrow(
+        "Default project swarms cannot be removed",
+      );
+      expect(() =>
+        store.create(
+          {
+            id: "school-project",
+            title: "Duplicate",
+            purpose: "Duplicate.",
+            agentIds: ["research-triad"],
+          },
+          agents,
+        ),
+      ).not.toThrow();
       expect(() =>
         store.create(
           {

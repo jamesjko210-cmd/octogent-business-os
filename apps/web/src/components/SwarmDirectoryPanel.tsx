@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 
-import { buildAgentRosterUrl, buildSwarmRegistryUrl } from "../runtime/runtimeEndpoints";
+import {
+  buildAgentRosterUrl,
+  buildSwarmRegistryItemUrl,
+  buildSwarmRegistryUrl,
+} from "../runtime/runtimeEndpoints";
 import { ActionButton } from "./ui/ActionButton";
+import { ConfirmationDialog } from "./ui/ConfirmationDialog";
 
 type SwarmState = "working" | "waiting" | "ready" | "prepared" | "not_launched";
 
@@ -9,6 +14,7 @@ type SwarmRegistryEntry = {
   id: string;
   title: string;
   purpose: string;
+  isDefault: boolean;
   state: SwarmState;
   roleCount: number;
   workingCount: number;
@@ -36,7 +42,10 @@ export const SwarmDirectoryPanel = () => {
   const [swarms, setSwarms] = useState<SwarmRegistryEntry[]>([]);
   const [roles, setRoles] = useState<Array<{ id: string; title: string }>>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [removingSwarm, setRemovingSwarm] = useState<SwarmRegistryEntry | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [newSwarm, setNewSwarm] = useState({
     id: "",
     title: "",
@@ -122,8 +131,30 @@ export const SwarmDirectoryPanel = () => {
       setNewSwarm({ id: "", title: "", purpose: "", agentIds: [] });
       setRefreshToken((value) => value + 1);
       setErrorMessage(null);
+      setNotice("Local project swarm created. No agent was launched.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to create project swarm.");
+    }
+  };
+
+  const removeSwarm = async () => {
+    if (!removingSwarm) return;
+    setIsRemoving(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch(buildSwarmRegistryItemUrl(removingSwarm.id), {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Unable to remove project swarm.");
+      setNotice(`${removingSwarm.title} was removed. Permanent roles remain available.`);
+      setRemovingSwarm(null);
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to remove project swarm.");
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -140,6 +171,7 @@ export const SwarmDirectoryPanel = () => {
         <span className="settings-agent-directory-count">{swarms.length} swarms</span>
       </header>
       {errorMessage ? <p className="settings-agentic-os-error">{errorMessage}</p> : null}
+      {notice ? <p className="settings-agent-directory-notice">{notice}</p> : null}
       <form
         className="settings-swarm-create"
         onSubmit={(event) => {
@@ -238,9 +270,48 @@ export const SwarmDirectoryPanel = () => {
                 No live roles yet. Start a scoped role terminal when this swarm has work to do.
               </p>
             )}
+            {swarm.isDefault ? (
+              <p className="settings-swarm-protected">Default swarm: permanent project lane.</p>
+            ) : (
+              <div className="settings-swarm-actions">
+                <span>Custom swarm: safe to remove when its project is finished.</span>
+                <ActionButton
+                  aria-label={`Remove ${swarm.title}`}
+                  onClick={() => setRemovingSwarm(swarm)}
+                  size="dense"
+                  type="button"
+                  variant="danger"
+                >
+                  Remove custom swarm
+                </ActionButton>
+              </div>
+            )}
           </article>
         ))}
       </div>
+      {removingSwarm ? (
+        <ConfirmationDialog
+          ariaLabel={`Remove ${removingSwarm.title}`}
+          confirmLabel={isRemoving ? "Removing..." : "Remove custom swarm"}
+          isBusy={isRemoving}
+          isConfirmDisabled={isRemoving}
+          message={
+            <>
+              Remove the custom <strong>{removingSwarm.title}</strong> project lane. Its permanent
+              roles, terminal records, role inboxes, shared memory, audit history, and default
+              project swarms will remain.
+            </>
+          }
+          onCancel={() => {
+            if (!isRemoving) setRemovingSwarm(null);
+          }}
+          onConfirm={() => {
+            void removeSwarm();
+          }}
+          title="Remove custom swarm"
+          warning="This removes only this local custom project-lane definition. Create it again later if the project resumes."
+        />
+      ) : null}
     </section>
   );
 };

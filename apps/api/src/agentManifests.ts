@@ -150,7 +150,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     workspaceMode: "worktree",
     tentacleIds: ["game-business"],
     allowedPaths: ["workspace", ".octogent/worktrees"],
-    allowedTools: ["terminal", "filesystem", "tests", "git-status"],
+    allowedTools: ["terminal", "filesystem", "tests", "git-status", "memory"],
     policies: codingPolicies,
   }),
   createPermanentAgentManifest({
@@ -162,7 +162,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     workspaceMode: "worktree",
     tentacleIds: ["game-business"],
     allowedPaths: ["workspace", ".octogent/worktrees", "apps", "packages"],
-    allowedTools: ["terminal", "filesystem", "tests", "git-status", "failure-analysis"],
+    allowedTools: ["terminal", "filesystem", "tests", "git-status", "failure-analysis", "memory"],
     policies: codingPolicies,
   }),
   createPermanentAgentManifest({
@@ -196,7 +196,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     provider: "codex",
     tentacleIds: ["game-business"],
     allowedPaths: ["workspace", ".octogent/tentacles/game-business", "scripts"],
-    allowedTools: ["terminal", "filesystem", "tests", "workflow-registry"],
+    allowedTools: ["terminal", "filesystem", "tests", "workflow-registry", "memory"],
     policies: codingPolicies,
   }),
   createPermanentAgentManifest({
@@ -252,7 +252,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     provider: "stitch",
     tentacleIds: ["product-development"],
     allowedPaths: ["docs", "apps/web/public/prototypes"],
-    allowedTools: ["ui-brief", "design-export", "prototype-notes"],
+    allowedTools: ["ui-brief", "design-export", "prototype-notes", "memory"],
     policies: sharedPolicies,
   }),
 ];

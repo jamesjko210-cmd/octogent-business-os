@@ -100,8 +100,13 @@ const sharedPolicies = [
 
 const codingPolicies = [...sharedPolicies, codeWritePolicy];
 
+// Every permanent role may capture concise, verified project memory. Runtime access is still
+// constrained to the matching live role capability and project-managed Obsidian note areas.
+const createPermanentAgentManifest = (input: Parameters<typeof createDefaultAgentManifest>[0]) =>
+  createDefaultAgentManifest({ ...input, memoryWrite: true });
+
 export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "ceo-command",
     displayName: "CEO Command",
     description:
@@ -113,7 +118,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["channel-messaging", "deck", "memory", "decision-log"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "chief-of-staff",
     displayName: "Chief of Staff",
     description: "Maintains briefs, decisions, follow-ups, and clear handoffs for the operator.",
@@ -124,7 +129,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["channel-messaging", "deck", "memory", "briefs"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "execution-ops",
     displayName: "Execution Ops",
     description:
@@ -136,7 +141,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["channel-messaging", "deck", "memory", "status-review"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "codex-executor",
     displayName: "Codex Executor",
     description: "Executes scoped implementation, tests, debugging, and repository changes.",
@@ -148,7 +153,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["terminal", "filesystem", "tests", "git-status"],
     policies: codingPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "debugging-council",
     displayName: "Debugging Council",
     description: "Investigates failures, scopes fixes, verifies regressions, and records lessons.",
@@ -160,7 +165,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["terminal", "filesystem", "tests", "git-status", "failure-analysis"],
     policies: codingPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "marketing-council",
     displayName: "Marketing Council",
     description: "Prepares ethical audience learning, campaign drafts, and content hypotheses.",
@@ -171,7 +176,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["research-notes", "campaign-drafts", "memory"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "service-council",
     displayName: "Service Council",
     description:
@@ -183,7 +188,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["feedback-themes", "response-drafts", "memory"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "automation-council",
     displayName: "Automation Council",
     description: "Designs and verifies small local workflows with approval-gated external effects.",
@@ -194,7 +199,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["terminal", "filesystem", "tests", "workflow-registry"],
     policies: codingPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "finance-accounting",
     displayName: "Finance and Accounting",
     description:
@@ -206,7 +211,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["scenario-analysis", "decision-log", "memory"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "market-analysis",
     displayName: "Market Analysis",
     description: "Finds current cited evidence, competitors, and market signals for decisions.",
@@ -217,7 +222,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["live-research", "citations", "research-notes", "memory"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "research-triad",
     displayName: "Research Triad",
     description: "Combines Google-grounded research, source review, and reusable project briefs.",
@@ -228,7 +233,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["research-notes", "google-family", "memory"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "record-center",
     displayName: "Record Center",
     description: "Captures verified decisions, research summaries, tests, and durable context.",
@@ -239,7 +244,7 @@ export const DEFAULT_AGENT_MANIFESTS: AgentManifest[] = [
     allowedTools: ["notion-capture", "memory", "tasks"],
     policies: sharedPolicies,
   }),
-  createDefaultAgentManifest({
+  createPermanentAgentManifest({
     agentId: "stitch-ui-production",
     displayName: "Stitch UI Production",
     description: "Produces UI/UX concepts and screen direction for implementation handoff.",

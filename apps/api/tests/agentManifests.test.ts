@@ -10,6 +10,7 @@ describe("agent manifests", () => {
 
     expect(manifests.map((manifest) => manifest.agentId)).toEqual(roster.map((agent) => agent.id));
     expect(manifests.every((manifest) => manifest.executor.apiKeyAllowed === false)).toBe(true);
+    expect(manifests.every((manifest) => manifest.memory.read && manifest.memory.write)).toBe(true);
     expect(
       manifests.every((manifest) => {
         const role = roster.find((agent) => agent.id === manifest.agentId);

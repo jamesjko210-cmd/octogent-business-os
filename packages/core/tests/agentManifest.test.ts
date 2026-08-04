@@ -71,6 +71,19 @@ describe("agent manifests", () => {
     ]);
   });
 
+  it("allows a project to explicitly grant scoped memory updates to an executor", () => {
+    const manifest = createDefaultAgentManifest({
+      agentId: "project-executor",
+      displayName: "Project Executor",
+      description: "Executes a scoped task and records its verified outcome.",
+      role: "executor",
+      provider: "codex",
+      memoryWrite: true,
+    });
+
+    expect(manifest.memory).toMatchObject({ read: true, write: true });
+  });
+
   it("allows unmatched actions", () => {
     const manifest = createDefaultAgentManifest({
       agentId: "notion-record-center",

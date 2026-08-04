@@ -162,6 +162,7 @@ export const createDefaultAgentManifest = ({
   allowedPaths = [],
   allowedTools = [],
   policies = [],
+  memoryWrite,
 }: {
   agentId: string;
   displayName: string;
@@ -173,6 +174,7 @@ export const createDefaultAgentManifest = ({
   allowedPaths?: string[];
   allowedTools?: string[];
   policies?: AgentManifestPolicy[];
+  memoryWrite?: boolean;
 }): AgentManifest => ({
   specVersion: 1,
   agentId,
@@ -207,7 +209,7 @@ export const createDefaultAgentManifest = ({
   policies,
   memory: {
     read: true,
-    write: role === "coordinator" || role === "memory" || role === "researcher",
+    write: memoryWrite ?? (role === "coordinator" || role === "memory" || role === "researcher"),
     tags: [agentId, role, provider],
   },
 });

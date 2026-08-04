@@ -125,6 +125,12 @@ describe("SwarmDirectoryPanel", () => {
             goals: [
               { id: "goal-1", title: "Playtest", status: "active", ownerAgentId: "codex-executor" },
               {
+                id: "goal-legacy-game",
+                title: "Game MVP",
+                status: "active",
+                tentacleId: "game-business",
+              },
+              {
                 id: "goal-2",
                 title: "Fix input",
                 status: "blocked",
@@ -139,14 +145,16 @@ describe("SwarmDirectoryPanel", () => {
             runs: [{ workflowId: "workflow-1", status: "queued" }],
           });
         }
-        return jsonResponse({ agents: [] });
+        return jsonResponse({
+          agents: [{ id: "codex-executor", title: "Codex Executor", tentacleId: "game-business" }],
+        });
       }),
     );
 
     render(<SwarmDirectoryPanel />);
 
     const plan = await screen.findByLabelText("Game Business work plan");
-    expect(plan).toHaveTextContent("1 active goals");
+    expect(plan).toHaveTextContent("2 active goals");
     expect(plan).toHaveTextContent("1 active workflows");
     expect(plan).toHaveTextContent("1 open workflow runs");
     expect(plan).toHaveTextContent("1 blocked goals");

@@ -41,6 +41,7 @@ type SwarmGoal = {
   title: string;
   status: "planned" | "active" | "blocked" | "needs_review" | "completed" | "cancelled";
   ownerAgentId?: string;
+  tentacleId?: string;
 };
 
 type SwarmWorkflow = {
@@ -82,7 +83,7 @@ export const SwarmDirectoryPanel = () => {
   const [goals, setGoals] = useState<SwarmGoal[]>([]);
   const [workflows, setWorkflows] = useState<SwarmWorkflow[]>([]);
   const [workflowRuns, setWorkflowRuns] = useState<SwarmWorkflowRun[]>([]);
-  const [roles, setRoles] = useState<Array<{ id: string; title: string }>>([]);
+  const [roles, setRoles] = useState<Array<{ id: string; title: string; tentacleId: string }>>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -157,11 +158,12 @@ export const SwarmDirectoryPanel = () => {
         if (response.ok && Array.isArray(payload.agents) && isCurrent) {
           setRoles(
             payload.agents.filter(
-              (agent): agent is { id: string; title: string } =>
+              (agent): agent is { id: string; title: string; tentacleId: string } =>
                 Boolean(agent) &&
                 typeof agent === "object" &&
                 typeof (agent as { id?: unknown }).id === "string" &&
-                typeof (agent as { title?: unknown }).title === "string",
+                typeof (agent as { title?: unknown }).title === "string" &&
+                typeof (agent as { tentacleId?: unknown }).tentacleId === "string",
             ),
           );
         }
@@ -299,8 +301,15 @@ export const SwarmDirectoryPanel = () => {
       <div className="settings-swarm-grid">
         {swarms.map((swarm) => {
           const swarmAgentIds = new Set(swarm.agentIds);
+          const swarmTentacleIds = new Set(
+            roles.filter((role) => swarmAgentIds.has(role.id)).map((role) => role.tentacleId),
+          );
           const swarmGoals = goals.filter(
-            (goal) => goal.ownerAgentId !== undefined && swarmAgentIds.has(goal.ownerAgentId),
+            (goal) =>
+              (goal.ownerAgentId !== undefined && swarmAgentIds.has(goal.ownerAgentId)) ||
+              (goal.ownerAgentId === undefined &&
+                goal.tentacleId !== undefined &&
+                swarmTentacleIds.has(goal.tentacleId)),
           );
           const activeGoalCount = swarmGoals.filter((goal) => goal.status === "active").length;
           const blockedGoalCount = swarmGoals.filter((goal) => goal.status === "blocked").length;

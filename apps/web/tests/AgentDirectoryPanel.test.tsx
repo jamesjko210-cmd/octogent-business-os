@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { formatTimestamp } from "../src/app/formatTimestamp";
 import { AgentDirectoryPanel } from "../src/components/AgentDirectoryPanel";
 
 afterEach(() => {
@@ -27,6 +28,7 @@ describe("AgentDirectoryPanel", () => {
                 state: "working",
                 providerConnection: "shell_started_unverified",
                 activityStatus: "testing",
+                activityUpdatedAt: "2026-08-05T00:00:00.000Z",
                 currentActivity: "testing: Running the Block Bounce regression checks.",
                 terminalIds: ["game-qa-worker"],
                 executionScope: { workspaceMode: "worktree", allowedTools: ["terminal"] },
@@ -46,6 +48,7 @@ describe("AgentDirectoryPanel", () => {
     expect(
       screen.getByText("testing: Running the Block Bounce regression checks."),
     ).toBeInTheDocument();
+    expect(screen.getByText(formatTimestamp("2026-08-05T00:00:00.000Z"))).toBeInTheDocument();
     expect(screen.getByText("Working")).toBeInTheDocument();
     expect(screen.getByText("Shell started; provider unverified")).toBeInTheDocument();
   });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { formatTimestamp } from "../app/formatTimestamp";
 import {
   buildAgentInboxUrl,
   buildAgentRosterUrl,
@@ -28,6 +29,7 @@ type AgentRosterEntry = {
   providerConnection: ProviderConnectionState;
   currentActivity: string;
   activityStatus?: string;
+  activityUpdatedAt?: string;
   terminalIds: string[];
   executionScope: {
     workspaceMode: "shared" | "worktree";
@@ -486,6 +488,12 @@ export const AgentDirectoryPanel = () => {
                 <dt>Current status</dt>
                 <dd>{agent.currentActivity}</dd>
               </div>
+              {agent.activityUpdatedAt ? (
+                <div>
+                  <dt>Last activity report</dt>
+                  <dd>{formatTimestamp(agent.activityUpdatedAt)}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt>Memory</dt>
                 <dd>

@@ -20,6 +20,7 @@ describe("listSwarmRegistry", () => {
         state: "working",
         providerConnection: "shell_started_unverified",
         currentActivity: "testing: Running checks.",
+        activityUpdatedAt: "2026-08-05T00:00:00.000Z",
         terminalIds: ["codex-worker"],
       },
       {
@@ -48,6 +49,7 @@ describe("listSwarmRegistry", () => {
             expect.objectContaining({
               id: "codex-executor",
               currentActivity: "testing: Running checks.",
+              activityUpdatedAt: "2026-08-05T00:00:00.000Z",
             }),
           ],
         }),

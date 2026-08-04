@@ -36,6 +36,7 @@ export type AgentRosterEntry = AgentRosterRole & {
   providerConnection: ProviderConnectionState;
   currentActivity: string;
   activityStatus?: AgentActivityStatus;
+  activityUpdatedAt?: string;
   terminalIds: string[];
 };
 
@@ -290,7 +291,7 @@ export const listAgentRoster = (
       providerConnection: providerConnectionFor(roleTerminals),
       currentActivity: activityFor(state, roleTerminals, activity),
       ...(activity && state !== "not_launched" && state !== "prepared"
-        ? { activityStatus: activity.status }
+        ? { activityStatus: activity.status, activityUpdatedAt: activity.updatedAt }
         : {}),
       terminalIds: roleTerminals.map((terminal) => terminal.terminalId),
     };

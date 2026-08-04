@@ -1311,13 +1311,19 @@ describe("createApiServer", () => {
 
     const agentResponse = await fetch(`${baseUrl}/api/agents`);
     const agentPayload = (await agentResponse.json()) as {
-      agents: Array<{ id: string; activityStatus?: string; currentActivity: string }>;
+      agents: Array<{
+        id: string;
+        activityStatus?: string;
+        activityUpdatedAt?: string;
+        currentActivity: string;
+      }>;
     };
     expect(agentPayload.agents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "codex-executor",
           activityStatus: "reviewing",
+          activityUpdatedAt: expect.any(String),
           currentActivity: "reviewing: 2 allowlisted Block Bounce verification checks passed.",
         }),
       ]),

@@ -432,6 +432,12 @@
   line-height: 1.35;
 }
 
+.settings-swarm-activity-time {
+  grid-column: 1 / -1;
+  color: #7f95b1;
+  font-size: 0.67rem;
+}
+
 .settings-swarm-empty-activity {
   margin: 1rem 0 0;
   color: #9eb0c8;

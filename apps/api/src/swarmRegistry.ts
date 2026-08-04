@@ -24,6 +24,7 @@ export type SwarmRegistryEntry = SwarmDefinition & {
     title: string;
     state: AgentRosterState;
     currentActivity: string;
+    activityUpdatedAt?: string;
   }>;
 };
 
@@ -80,7 +81,13 @@ const activeRolesFor = (agents: readonly AgentRosterEntry[]) =>
     .filter((agent) => agent.state !== "not_launched")
     .sort((left, right) => STATE_PRIORITY[left.state] - STATE_PRIORITY[right.state])
     .slice(0, 3)
-    .map(({ id, title, state, currentActivity }) => ({ id, title, state, currentActivity }));
+    .map(({ id, title, state, currentActivity, activityUpdatedAt }) => ({
+      id,
+      title,
+      state,
+      currentActivity,
+      ...(activityUpdatedAt ? { activityUpdatedAt } : {}),
+    }));
 
 export const listSwarmRegistry = (
   agents: readonly AgentRosterEntry[],

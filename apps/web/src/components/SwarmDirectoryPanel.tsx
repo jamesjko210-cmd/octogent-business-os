@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { formatTimestamp } from "../app/formatTimestamp";
 import {
   buildAgentRosterUrl,
   buildSwarmRegistryItemUrl,
@@ -28,6 +29,7 @@ type SwarmRegistryEntry = {
     title: string;
     state: SwarmState;
     currentActivity: string;
+    activityUpdatedAt?: string;
   }>;
 };
 
@@ -263,6 +265,11 @@ export const SwarmDirectoryPanel = () => {
                       {STATE_LABELS[agent.state]}
                     </span>
                     <span className="settings-swarm-activity-summary">{agent.currentActivity}</span>
+                    {agent.activityUpdatedAt ? (
+                      <span className="settings-swarm-activity-time">
+                        Last report {formatTimestamp(agent.activityUpdatedAt)}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { formatTimestamp } from "../src/app/formatTimestamp";
 import { SwarmDirectoryPanel } from "../src/components/SwarmDirectoryPanel";
 
 afterEach(() => {
@@ -34,6 +35,7 @@ describe("SwarmDirectoryPanel", () => {
                     title: "Codex Executor",
                     state: "working",
                     currentActivity: "testing: Running checks.",
+                    activityUpdatedAt: "2026-08-05T00:00:00.000Z",
                   },
                 ],
               },
@@ -75,6 +77,9 @@ describe("SwarmDirectoryPanel", () => {
     expect(screen.getByText("2 ready")).toBeInTheDocument();
     expect(screen.getByText("1 prepared")).toBeInTheDocument();
     expect(screen.getByText("testing: Running checks.")).toBeInTheDocument();
+    expect(
+      screen.getByText(`Last report ${formatTimestamp("2026-08-05T00:00:00.000Z")}`),
+    ).toBeInTheDocument();
   });
 
   it("removes a custom swarm without offering deletion of default workstreams", async () => {

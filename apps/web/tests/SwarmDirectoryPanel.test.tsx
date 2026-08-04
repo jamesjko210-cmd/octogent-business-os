@@ -158,6 +158,12 @@ describe("SwarmDirectoryPanel", () => {
     expect(plan).toHaveTextContent("1 active workflows");
     expect(plan).toHaveTextContent("1 open workflow runs");
     expect(plan).toHaveTextContent("1 blocked goals");
+
+    const currentGoals = screen.getByLabelText("Game Business current goals");
+    expect(currentGoals).toHaveTextContent("Fix input");
+    expect(currentGoals).toHaveTextContent("Blocked");
+    expect(currentGoals).toHaveTextContent("Playtest");
+    expect(currentGoals).toHaveTextContent("Game MVP");
   });
 
   it("removes a custom swarm without offering deletion of default workstreams", async () => {

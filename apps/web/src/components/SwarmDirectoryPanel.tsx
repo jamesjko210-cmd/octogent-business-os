@@ -78,6 +78,23 @@ const OPEN_RUN_STATUSES = new Set<SwarmWorkflowRun["status"]>([
   "blocked",
 ]);
 
+const GOAL_STATUS_LABELS: Record<SwarmGoal["status"], string> = {
+  planned: "Planned",
+  active: "Active",
+  blocked: "Blocked",
+  needs_review: "Needs review",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const CURRENT_GOAL_STATUSES = new Set<SwarmGoal["status"]>(["active", "blocked", "needs_review"]);
+
+const currentGoalPriority = (goal: SwarmGoal) => {
+  if (goal.status === "blocked") return 0;
+  if (goal.status === "needs_review") return 1;
+  return 2;
+};
+
 export const SwarmDirectoryPanel = () => {
   const [swarms, setSwarms] = useState<SwarmRegistryEntry[]>([]);
   const [goals, setGoals] = useState<SwarmGoal[]>([]);
@@ -320,6 +337,10 @@ export const SwarmDirectoryPanel = () => {
           const openRunCount = workflowRuns.filter(
             (run) => activeWorkflowIds.has(run.workflowId) && OPEN_RUN_STATUSES.has(run.status),
           ).length;
+          const currentGoals = swarmGoals
+            .filter((goal) => CURRENT_GOAL_STATUSES.has(goal.status))
+            .sort((left, right) => currentGoalPriority(left) - currentGoalPriority(right))
+            .slice(0, 3);
 
           return (
             <article className="settings-swarm-card" data-state={swarm.state} key={swarm.id}>
@@ -346,6 +367,19 @@ export const SwarmDirectoryPanel = () => {
                 <span>{openRunCount} open workflow runs</span>
                 {blockedGoalCount > 0 ? <span>{blockedGoalCount} blocked goals</span> : null}
               </div>
+              {currentGoals.length > 0 ? (
+                <ul
+                  className="settings-swarm-goal-list"
+                  aria-label={`${swarm.title} current goals`}
+                >
+                  {currentGoals.map((goal) => (
+                    <li data-status={goal.status} key={goal.id}>
+                      <span>{goal.title}</span>
+                      <span>{GOAL_STATUS_LABELS[goal.status]}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {swarm.activeRoles.length > 0 ? (
                 <ul
                   className="settings-swarm-activity-list"

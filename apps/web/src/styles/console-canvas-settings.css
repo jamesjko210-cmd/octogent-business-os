@@ -407,6 +407,48 @@
   padding: 0.14rem 0.3rem;
 }
 
+.settings-swarm-goal-list {
+  display: grid;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-swarm-goal-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.55rem;
+  border-left: 2px solid #355c91;
+  color: #dce6f7;
+  font-size: 0.75rem;
+  padding: 0.24rem 0.36rem;
+}
+
+.settings-swarm-goal-list li[data-status="blocked"] {
+  border-left-color: #d05b4d;
+}
+
+.settings-swarm-goal-list li[data-status="needs_review"] {
+  border-left-color: #e3b54c;
+}
+
+.settings-swarm-goal-list li span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-swarm-goal-list li span:last-child {
+  color: #9eb0c8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .settings-swarm-activity-list {
   display: grid;
   gap: 0.55rem;

@@ -10,6 +10,7 @@ This log records verified Octogent changes before they are committed and publish
 - Project Swarms now protects the default Game Business and Research lanes while allowing an operator to remove a finished custom swarm through an explicit confirmation. A custom lane cannot be removed while one of its assigned roles is prepared, ready, waiting, or working. Removing an eligible lane preserves permanent roles, terminal records, inboxes, shared memory, and audit history.
 - Agent Directory and Project Swarms now show the timestamp of a live role's last capability-checked activity report, so an operator can distinguish a recent report from an older status summary.
 - Every Project Swarm card now summarizes its active goals, active workflows, open workflow runs, and blocked goals from the existing durable Goal and Workflow registries. Explicit role ownership takes priority; older unassigned goals are safely matched through an assigned role's permanent tentacle so existing work remains visible.
+- Every Project Swarm card now lists up to three current goals, placing blocked work before review and active work. This gives the operator the goal titles behind the operational counts without adding a new workflow or execution control.
 
 ### Verification
 

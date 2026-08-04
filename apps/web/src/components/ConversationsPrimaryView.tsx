@@ -80,6 +80,7 @@ const readChannelError = async (response: Response) => {
 
 const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  const [agents, setAgents] = useState<AgentRosterEntry[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,15 +89,22 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
     let isCurrent = true;
     const loadHandoffs = async () => {
       try {
-        const response = await fetch(buildAllChannelMessagesUrl(), {
-          headers: { Accept: "application/json" },
-        });
+        const [response, rosterResponse] = await Promise.all([
+          fetch(buildAllChannelMessagesUrl(), { headers: { Accept: "application/json" } }),
+          fetch(buildAgentRosterUrl(), { headers: { Accept: "application/json" } }),
+        ]);
         if (!response.ok) throw new Error(await readChannelError(response));
         const payload = (await response.json()) as { messages?: unknown };
+        const rosterPayload = rosterResponse.ok
+          ? ((await rosterResponse.json()) as { agents?: unknown })
+          : null;
         if (isCurrent) {
           setMessages(
             Array.isArray(payload.messages) ? (payload.messages as ChannelMessage[]) : [],
           );
+          if (Array.isArray(rosterPayload?.agents)) {
+            setAgents(rosterPayload.agents as AgentRosterEntry[]);
+          }
           setErrorMessage(null);
         }
       } catch (error) {
@@ -118,6 +126,11 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
     };
   }, [enabled]);
 
+  const roleByTerminalId = new Map(
+    agents.flatMap((agent) => agent.terminalIds.map((terminalId) => [terminalId, agent] as const)),
+  );
+  const roleLabel = (terminalId: string) => roleByTerminalId.get(terminalId)?.title ?? terminalId;
+
   return (
     <section className="agent-handoffs-panel" aria-label="Recent agent handoffs">
       <header>
@@ -135,9 +148,15 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
           messages.slice(0, 8).map((message) => (
             <li key={message.messageId}>
               <div>
-                <strong>{message.fromTerminalId}</strong>
+                <span className="agent-handoff-participant">
+                  <strong>{roleLabel(message.fromTerminalId)}</strong>
+                  <small>{message.fromTerminalId}</small>
+                </span>
                 <span>to</span>
-                <strong>{message.toTerminalId}</strong>
+                <span className="agent-handoff-participant">
+                  <strong>{roleLabel(message.toTerminalId)}</strong>
+                  <small>{message.toTerminalId}</small>
+                </span>
                 <em>{message.delivered ? "delivered" : "queued"}</em>
               </div>
               <p>{message.content}</p>

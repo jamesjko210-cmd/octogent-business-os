@@ -243,6 +243,8 @@ export const SwarmDirectoryPanel = () => {
     }
   };
 
+  const rolesById = new Map(roles.map((role) => [role.id, role]));
+
   return (
     <section className="settings-panel settings-panel--swarm-directory" aria-label="Project Swarms">
       <header className="settings-panel-header settings-agent-directory-header">
@@ -374,8 +376,17 @@ export const SwarmDirectoryPanel = () => {
                 >
                   {currentGoals.map((goal) => (
                     <li data-status={goal.status} key={goal.id}>
-                      <span>{goal.title}</span>
-                      <span>{GOAL_STATUS_LABELS[goal.status]}</span>
+                      <div>
+                        <span className="settings-swarm-goal-title">{goal.title}</span>
+                        <small className="settings-swarm-goal-owner">
+                          {goal.ownerAgentId
+                            ? (rolesById.get(goal.ownerAgentId)?.title ?? "Assigned role")
+                            : "Unassigned"}
+                        </small>
+                      </div>
+                      <span className="settings-swarm-goal-status">
+                        {GOAL_STATUS_LABELS[goal.status]}
+                      </span>
                     </li>
                   ))}
                 </ul>

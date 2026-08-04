@@ -146,6 +146,16 @@
   color: var(--accent-primary);
 }
 
+.agent-handoff-participant {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.agent-handoff-participant small {
+  color: #8192aa;
+  font-size: 0.55rem;
+}
+
 .agent-handoffs-list span,
 .agent-handoffs-list em {
   color: #8192aa;

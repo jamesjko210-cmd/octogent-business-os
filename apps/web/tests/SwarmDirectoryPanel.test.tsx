@@ -164,6 +164,7 @@ describe("SwarmDirectoryPanel", () => {
     expect(currentGoals).toHaveTextContent("Blocked");
     expect(currentGoals).toHaveTextContent("Playtest");
     expect(currentGoals).toHaveTextContent("Game MVP");
+    expect(currentGoals).toHaveTextContent("Codex Executor");
   });
 
   it("removes a custom swarm without offering deletion of default workstreams", async () => {

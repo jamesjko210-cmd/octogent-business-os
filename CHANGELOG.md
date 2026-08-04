@@ -13,6 +13,7 @@ This log records verified Octogent changes before they are committed and publish
 - Every Project Swarm card now lists up to three current goals, placing blocked work before review and active work. This gives the operator the goal titles behind the operational counts without adding a new workflow or execution control.
 - Project initialization now migrates every missing durable local state record into its normalized project directory, including goals, workflows, memory, role messages, audit records, activity, and transcripts. Existing normalized records are never overwritten during migration.
 - Goal Command Center now lets the operator assign or reassign an existing goal to a permanent role. The API validates the role, updates the goal's matching tentacle, writes a safe owner-assignment audit event, and never launches the role.
+- Project Swarm cards now name the permanent role responsible for each displayed current goal, so the dashboard shows both the work and its accountable agent in one view.
 
 ### Verification
 

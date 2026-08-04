@@ -434,14 +434,25 @@
   border-left-color: #e3b54c;
 }
 
-.settings-swarm-goal-list li span:first-child {
+.settings-swarm-goal-list li > div {
   min-width: 0;
+}
+
+.settings-swarm-goal-title {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.settings-swarm-goal-list li span:last-child {
+.settings-swarm-goal-owner {
+  display: block;
+  color: #9eb0c8;
+  font-size: 0.63rem;
+  margin-top: 0.12rem;
+}
+
+.settings-swarm-goal-status {
   color: #9eb0c8;
   font-size: 0.65rem;
   font-weight: 700;

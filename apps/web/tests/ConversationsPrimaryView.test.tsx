@@ -43,7 +43,7 @@ const roles = [
     purpose: "Builds and tests a scoped change.",
     state: "not_launched",
     currentActivity: "No matching terminal is launched yet.",
-    terminalIds: [],
+    terminalIds: ["codex-executor-shell"],
   },
   {
     id: "ceo-command",
@@ -54,6 +54,16 @@ const roles = [
     state: "working",
     currentActivity: "Planning the weekly brief.",
     terminalIds: ["ceo-shell"],
+  },
+  {
+    id: "research-triad",
+    title: "Research Triad",
+    role: "Google-grounded research and synthesis",
+    tentacleId: "research",
+    purpose: "Prepares source-grounded briefs.",
+    state: "working",
+    currentActivity: "Researching the approved question.",
+    terminalIds: ["research-agent"],
   },
 ];
 
@@ -175,6 +185,8 @@ describe("ConversationsPrimaryView", () => {
     expect(
       await screen.findByText("Evidence is ready for the approved implementation task."),
     ).toBeInTheDocument();
+    expect(screen.getAllByText("Research Triad").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Codex Executor").length).toBeGreaterThan(1);
     expect(screen.getByText("research-agent")).toBeInTheDocument();
     expect(screen.getByText("codex-executor-shell")).toBeInTheDocument();
   });

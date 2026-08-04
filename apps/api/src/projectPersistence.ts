@@ -2,10 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   appendFileSync,
   copyFileSync,
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -304,6 +304,28 @@ export const ensureOctogentGitignoreEntry = (workspaceCwd: string) => {
   return { changed: true };
 };
 
+const copyMissingStateEntries = (sourceDirectory: string, destinationDirectory: string): number => {
+  if (!existsSync(sourceDirectory)) {
+    return 0;
+  }
+
+  let copied = 0;
+  mkdirSync(destinationDirectory, { recursive: true });
+  for (const entry of readdirSync(sourceDirectory, { withFileTypes: true })) {
+    const sourcePath = join(sourceDirectory, entry.name);
+    const destinationPath = join(destinationDirectory, entry.name);
+
+    if (entry.isDirectory()) {
+      copied += copyMissingStateEntries(sourcePath, destinationPath);
+    } else if (entry.isFile() && !existsSync(destinationPath)) {
+      copyFileSync(sourcePath, destinationPath);
+      copied += 1;
+    }
+  }
+
+  return copied;
+};
+
 export const migrateStateToGlobal = (workspaceCwd: string, projectStateDir: string) => {
   const fallbackProjectDir = join(workspaceCwd, ".octogent");
   if (projectStateDir === fallbackProjectDir) {
@@ -321,54 +343,9 @@ export const migrateStateToGlobal = (workspaceCwd: string, projectStateDir: stri
 
   mkdirSync(newStateDir, { recursive: true });
 
-  const stateFiles = [
-    "tentacles.json",
-    "deck.json",
-    "monitor-config.json",
-    "monitor-cache.json",
-    "code-intel-events.jsonl",
-    "claude-usage-snapshot.json",
-    "runtime.json",
-  ];
-
-  let migrated = 0;
-  for (const file of stateFiles) {
-    const destination = join(newStateDir, file);
-    if (existsSync(destination)) {
-      continue;
-    }
-
-    const localSource = join(oldStateDir, file);
-    if (existsSync(localSource)) {
-      copyFileSync(localSource, destination);
-      migrated += 1;
-      continue;
-    }
-
-    if (!legacyGlobalProjectDir) {
-      continue;
-    }
-
-    const legacySource = join(legacyGlobalProjectDir, "state", file);
-    if (existsSync(legacySource)) {
-      copyFileSync(legacySource, destination);
-      migrated += 1;
-    }
-  }
-
-  const transcriptDestination = join(newStateDir, "transcripts");
-  if (!existsSync(transcriptDestination)) {
-    const localTranscriptSource = join(oldStateDir, "transcripts");
-    if (existsSync(localTranscriptSource)) {
-      cpSync(localTranscriptSource, transcriptDestination, { recursive: true });
-      migrated += 1;
-    } else if (legacyGlobalProjectDir) {
-      const legacyTranscriptSource = join(legacyGlobalProjectDir, "state", "transcripts");
-      if (existsSync(legacyTranscriptSource)) {
-        cpSync(legacyTranscriptSource, transcriptDestination, { recursive: true });
-        migrated += 1;
-      }
-    }
+  let migrated = copyMissingStateEntries(oldStateDir, newStateDir);
+  if (legacyGlobalProjectDir) {
+    migrated += copyMissingStateEntries(join(legacyGlobalProjectDir, "state"), newStateDir);
   }
 
   if (migrated > 0) {

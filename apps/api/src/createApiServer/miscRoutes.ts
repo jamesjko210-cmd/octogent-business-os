@@ -65,7 +65,7 @@ export const handleWorkspaceSetupRoute: ApiRouteHandler = async (
   }
 
   if (stepId === "initialize-workspace") {
-    initializeWorkspaceFiles(workspaceCwd, projectStateDir);
+    initializeWorkspaceFiles(workspaceCwd);
   } else if (stepId === "ensure-gitignore") {
     ensureWorkspaceGitignore(workspaceCwd);
   } else if (stepId === "check-claude" || stepId === "check-git" || stepId === "check-curl") {

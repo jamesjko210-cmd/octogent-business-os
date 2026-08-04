@@ -11,10 +11,11 @@ This log records verified Octogent changes before they are committed and publish
 - Agent Directory and Project Swarms now show the timestamp of a live role's last capability-checked activity report, so an operator can distinguish a recent report from an older status summary.
 - Every Project Swarm card now summarizes its active goals, active workflows, open workflow runs, and blocked goals from the existing durable Goal and Workflow registries. Explicit role ownership takes priority; older unassigned goals are safely matched through an assigned role's permanent tentacle so existing work remains visible.
 - Every Project Swarm card now lists up to three current goals, placing blocked work before review and active work. This gives the operator the goal titles behind the operational counts without adding a new workflow or execution control.
+- Project initialization now migrates every missing durable local state record into its normalized project directory, including goals, workflows, memory, role messages, audit records, activity, and transcripts. Existing normalized records are never overwritten during migration.
 
 ### Verification
 
-- Latest swarm-operations audit passed: core 6/6, API 236/236, and web 127/127 tests. Core/API/web TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
+- Latest swarm-operations audit passed: core 6/6, API 237/237, and web 127/127 tests. Core/API/web TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
 
 ## 2026-08-05 - Public Repository Baseline
 

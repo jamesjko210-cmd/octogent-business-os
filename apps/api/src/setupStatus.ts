@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import type { AgenticOsBrain, WorkspaceSetupSnapshot, WorkspaceSetupStep } from "@octogent/core";
@@ -11,7 +11,7 @@ import {
   hasOctogentGitignoreEntry,
   loadProjectConfig,
   migrateStateToGlobal,
-  registerProject,
+  resolveProjectStateDir,
 } from "./projectPersistence";
 import { readSetupState } from "./setupState";
 import {
@@ -19,18 +19,17 @@ import {
   readCodexCliAuthentication,
 } from "./startupPrerequisites";
 
-export const initializeWorkspaceFiles = (workspaceCwd: string, projectStateDir: string) => {
+export const initializeWorkspaceFiles = (workspaceCwd: string) => {
   const projectName = loadProjectConfig(workspaceCwd)?.displayName;
   const projectConfig = ensureProjectScaffold(
     workspaceCwd,
     projectName,
     deriveProjectIdFromWorkspace(workspaceCwd),
   );
-  registerProject(workspaceCwd, projectConfig.displayName);
-  mkdirSync(join(projectStateDir, "state"), { recursive: true });
-  migrateStateToGlobal(workspaceCwd, projectStateDir);
+  const normalizedProjectStateDir = resolveProjectStateDir(workspaceCwd, projectConfig.displayName);
+  migrateStateToGlobal(workspaceCwd, normalizedProjectStateDir);
 
-  return { projectConfig, projectStateDir };
+  return { projectConfig, projectStateDir: normalizedProjectStateDir };
 };
 
 export const ensureWorkspaceGitignore = (workspaceCwd: string) =>

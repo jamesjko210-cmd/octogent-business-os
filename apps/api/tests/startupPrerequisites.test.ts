@@ -1,12 +1,28 @@
+import type { execFileSync } from "node:child_process";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   collectStartupPrerequisiteReport,
   formatStartupPrerequisiteReport,
   isCommandAvailable,
+  readCodexCliAuthentication,
 } from "../src/startupPrerequisites";
 
 describe("startup prerequisites", () => {
+  it("distinguishes a local Codex sign-in from command availability", () => {
+    expect(
+      readCodexCliAuthentication({
+        isAvailable: (command) => command === "codex",
+        execFileSyncImpl: (() => "Logged in using ChatGPT") as unknown as typeof execFileSync,
+      }),
+    ).toBe("authenticated");
+    expect(
+      readCodexCliAuthentication({
+        isAvailable: () => false,
+      }),
+    ).toBe("unavailable");
+  });
   afterEach(() => {
     vi.unstubAllEnvs();
   });

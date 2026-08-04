@@ -28,7 +28,7 @@ export type AgenticOsBrainId =
   | "notebooklm"
   | "qwen";
 
-export type AgenticOsBrainStatus = "available_local" | "needs_setup";
+export type AgenticOsBrainStatus = "authenticated_local" | "available_local" | "needs_setup";
 
 export type AgenticOsBrain = {
   id: AgenticOsBrainId;

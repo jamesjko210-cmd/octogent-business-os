@@ -831,6 +831,15 @@
     ), linear-gradient(180deg, rgba(18, 27, 24, 0.96), rgba(9, 15, 13, 0.98));
 }
 
+.settings-brain-card[data-status="authenticated_local"] {
+  border-color: color-mix(in srgb, var(--term-gold) 66%, #735923);
+  background: radial-gradient(
+      circle at 12% 0%,
+      color-mix(in srgb, var(--term-gold) 18%, transparent),
+      transparent 38%
+    ), linear-gradient(180deg, rgba(31, 27, 18, 0.96), rgba(16, 13, 9, 0.98));
+}
+
 .settings-brain-card-topline {
   display: flex;
   align-items: center;
@@ -861,6 +870,11 @@
 .settings-brain-card[data-status="available_local"] .settings-brain-status {
   border-color: color-mix(in srgb, var(--term-green) 54%, #294635);
   color: #c2f5d4;
+}
+
+.settings-brain-card[data-status="authenticated_local"] .settings-brain-status {
+  border-color: color-mix(in srgb, var(--term-gold) 64%, #735923);
+  color: #ffe4a4;
 }
 
 .settings-brain-card p {

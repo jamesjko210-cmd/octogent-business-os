@@ -55,7 +55,7 @@ describe("SettingsPrimaryView", () => {
     renderSettings();
 
     expect(screen.getByRole("region", { name: "Agentic OS map" })).toBeInTheDocument();
-    expect(screen.getByText("1/2 available locally")).toBeInTheDocument();
+    expect(screen.getByText("0 signed in · 1/2 available")).toBeInTheDocument();
     expect(screen.getByLabelText("Claude available locally")).toHaveAttribute(
       "data-status",
       "available_local",
@@ -72,6 +72,32 @@ describe("SettingsPrimaryView", () => {
       "href",
       "https://claude.ai/",
     );
+  });
+
+  it("labels a verified local CLI session without claiming a model response", () => {
+    const claude = setupSnapshot.agenticOs.brains[0];
+    if (!claude) throw new Error("Expected Claude setup fixture.");
+
+    renderSettings({
+      ...setupSnapshot,
+      agenticOs: {
+        brains: [
+          {
+            ...claude,
+            status: "authenticated_local",
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText("1 signed in · 1/1 available")).toBeInTheDocument();
+    expect(screen.getByLabelText("Claude signed in locally")).toHaveAttribute(
+      "data-status",
+      "authenticated_local",
+    );
+    expect(
+      screen.getByText("Local CLI sign-in only. No model request has been made."),
+    ).toBeInTheDocument();
   });
 
   it("keeps a fallback brain map visible while setup status is unavailable", () => {

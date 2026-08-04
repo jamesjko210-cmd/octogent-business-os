@@ -19,6 +19,7 @@ This log records verified Octogent changes before they are committed and publish
 
 ### Added
 
+- Local Codex sign-in evidence. The Systems brain map now distinguishes a discovered command from a locally authenticated Codex CLI session using `codex login status`; it does not make a model request or claim that a provider response succeeded.
 - Agent Directory API and Systems dashboard cards for 13 permanent operating roles, including a plain-language purpose, launch reason, scoped provider/tentacle, and real terminal-derived status.
 - Durable, scoped agent activity reporting. A live matching terminal can report `planning`, `researching`, `implementing`, `testing`, `reviewing`, or `waiting`; unrelated or stopped terminals are rejected.
 - First constrained execution adapter: only a claimed Codex Game QA workflow can run the two fixed local Block Bounce Node test files. It cannot accept arbitrary commands, paths, arguments, shell text, or network targets.

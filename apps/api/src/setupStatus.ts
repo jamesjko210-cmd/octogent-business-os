@@ -14,7 +14,10 @@ import {
   registerProject,
 } from "./projectPersistence";
 import { readSetupState } from "./setupState";
-import { collectStartupPrerequisiteReport } from "./startupPrerequisites";
+import {
+  collectStartupPrerequisiteReport,
+  readCodexCliAuthentication,
+} from "./startupPrerequisites";
 
 export const initializeWorkspaceFiles = (workspaceCwd: string, projectStateDir: string) => {
   const projectName = loadProjectConfig(workspaceCwd)?.displayName;
@@ -56,6 +59,9 @@ export const readWorkspaceSetupSnapshot = (
   const isGitVerified = Boolean(verifiedSteps["check-git"]);
   const isCurlVerified = Boolean(verifiedSteps["check-curl"]);
   const hasClaudeCode = prerequisites.availability.claude;
+  const codexAuthentication = readCodexCliAuthentication({
+    isAvailable: (command) => (command === "codex" ? prerequisites.availability.codex : false),
+  });
   const hasGit = prerequisites.availability.git;
   const hasCurl = prerequisites.availability.curl;
   const brain = (
@@ -66,12 +72,13 @@ export const readWorkspaceSetupSnapshot = (
     command: string,
     guidance: string,
     workflowUrl: string,
+    authenticated = false,
   ): AgenticOsBrain => ({
     id,
     label,
     role,
     // Command discovery proves only a local launcher is present, not login or a provider response.
-    status: available ? "available_local" : "needs_setup",
+    status: authenticated ? "authenticated_local" : available ? "available_local" : "needs_setup",
     command,
     guidance,
     workflowUrl,
@@ -110,8 +117,11 @@ export const readWorkspaceSetupSnapshot = (
       "Execution engine for code edits, tests, builds, and repository maintenance.",
       prerequisites.availability.codex,
       "codex",
-      "Install Codex CLI and run `codex login`.",
+      codexAuthentication === "authenticated"
+        ? "Local Codex CLI session is signed in. A model response is still unverified."
+        : "Install Codex CLI and run `codex login`.",
       process.env.OCTOGENT_CODEX_URL?.trim() || "https://chatgpt.com/codex",
+      codexAuthentication === "authenticated",
     ),
     brain(
       "stitch",

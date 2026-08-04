@@ -114,7 +114,16 @@ export const SettingsPrimaryView = ({
   onMonitorVisibilityChange,
 }: SettingsPrimaryViewProps) => {
   const brains = workspaceSetup?.agenticOs.brains ?? FALLBACK_BRAINS;
-  const availableBrainCount = brains.filter((brain) => brain.status === "available_local").length;
+  const availableBrainCount = brains.filter((brain) => brain.status !== "needs_setup").length;
+  const authenticatedBrainCount = brains.filter(
+    (brain) => brain.status === "authenticated_local",
+  ).length;
+  const brainStatusLabel = (brain: AgenticOsBrain) =>
+    brain.status === "authenticated_local"
+      ? "signed in locally"
+      : brain.status === "available_local"
+        ? "available locally"
+        : "needs setup";
 
   return (
     <section className="settings-view" aria-label="Settings primary view">
@@ -131,7 +140,7 @@ export const SettingsPrimaryView = ({
           <span className="settings-agentic-os-count">
             {isWorkspaceSetupLoading
               ? "Checking"
-              : `${availableBrainCount}/${brains.length} available locally`}
+              : `${authenticatedBrainCount} signed in · ${availableBrainCount}/${brains.length} available`}
           </span>
         </header>
 
@@ -143,12 +152,16 @@ export const SettingsPrimaryView = ({
               className="settings-brain-card"
               data-status={brain.status}
               key={brain.id}
-              aria-label={`${brain.label} ${brain.status === "available_local" ? "available locally" : "needs setup"}`}
+              aria-label={`${brain.label} ${brainStatusLabel(brain)}`}
             >
               <div className="settings-brain-card-topline">
                 <span className="settings-brain-label">{brain.label}</span>
                 <span className="settings-brain-status">
-                  {brain.status === "available_local" ? "Available locally" : "Needs setup"}
+                  {brain.status === "authenticated_local"
+                    ? "Signed in locally"
+                    : brain.status === "available_local"
+                      ? "Available locally"
+                      : "Needs setup"}
                 </span>
               </div>
               <p>{brain.role}</p>
@@ -156,6 +169,9 @@ export const SettingsPrimaryView = ({
               <small>{brain.guidance}</small>
               {brain.status === "available_local" ? (
                 <small>Command found only. Login and provider response are not verified.</small>
+              ) : null}
+              {brain.status === "authenticated_local" ? (
+                <small>Local CLI sign-in only. No model request has been made.</small>
               ) : null}
               <a
                 className="settings-brain-open"

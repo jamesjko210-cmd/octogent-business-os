@@ -39,6 +39,12 @@ type CommandAvailabilityOptions = {
   execFileSyncImpl?: typeof execFileSync;
 };
 
+type CodexAuthenticationOptions = CommandAvailabilityOptions & {
+  isAvailable?: CommandAvailabilityChecker;
+};
+
+export type CodexCliAuthentication = "authenticated" | "unverified" | "unavailable";
+
 const resolveLookupCommand = (platform: NodeJS.Platform) =>
   platform === "win32"
     ? { file: "where", args: [] as string[] }
@@ -57,6 +63,25 @@ export const isCommandAvailable = (
     return true;
   } catch {
     return false;
+  }
+};
+
+// This verifies only the local CLI session. It deliberately does not make a model request.
+export const readCodexCliAuthentication = (
+  options: CodexAuthenticationOptions = {},
+): CodexCliAuthentication => {
+  const isAvailable = options.isAvailable ?? ((command) => isCommandAvailable(command, options));
+  if (!isAvailable("codex")) return "unavailable";
+
+  try {
+    const output = (options.execFileSyncImpl ?? execFileSync)("codex", ["login", "status"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 2_000,
+    });
+    return /logged in/i.test(String(output)) ? "authenticated" : "unverified";
+  } catch {
+    return "unverified";
   }
 };
 

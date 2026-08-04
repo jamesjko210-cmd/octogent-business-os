@@ -11,7 +11,7 @@ The original Octogent upstream remains protected by the local publishing guardra
 - A read-only GitHub readiness check is available at `GET /api/github/publish-readiness` and in the dashboard.
 - Remote Git actions are refused while `origin` is missing, points at the upstream, or has not been explicitly approved by the operator.
 - The local verified session history, Record Center, developer journal, and `CHANGELOG.md` provide review evidence before a release.
-- The current verified baseline is 6 core tests, 236 API tests, and 126 web tests, plus TypeScript, Biome, whitespace, and production-build checks.
+- The current verified baseline is 6 core tests, 236 API tests, and 127 web tests, plus TypeScript, Biome, whitespace, and production-build checks.
 
 ## Operator Checklist
 

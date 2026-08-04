@@ -39,4 +39,4 @@ working local features from choices that require the operator before they can be
 
 ## Verification baseline
 
-The current local regression baseline is 6 core tests, 236 API tests, and 126 web tests. Core, API, and web TypeScript checks plus a full Biome check and `git diff --check` passed. The web production build passed.
+The current local regression baseline is 6 core tests, 236 API tests, and 127 web tests. Core, API, and web TypeScript checks plus a full Biome check and `git diff --check` passed. The web production build passed.

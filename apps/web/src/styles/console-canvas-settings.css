@@ -394,6 +394,19 @@
   gap: 0.34rem;
 }
 
+.settings-swarm-plan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+}
+
+.settings-swarm-plan span {
+  border: 1px solid #355c91;
+  color: #cde3ff;
+  font-size: 0.64rem;
+  padding: 0.14rem 0.3rem;
+}
+
 .settings-swarm-activity-list {
   display: grid;
   gap: 0.55rem;

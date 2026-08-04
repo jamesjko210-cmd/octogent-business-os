@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { formatTimestamp } from "../app/formatTimestamp";
 import {
   buildAgentRosterUrl,
+  buildGoalsUrl,
   buildSwarmRegistryItemUrl,
   buildSwarmRegistryUrl,
+  buildWorkflowsUrl,
 } from "../runtime/runtimeEndpoints";
 import { ActionButton } from "./ui/ActionButton";
 import { ConfirmationDialog } from "./ui/ConfirmationDialog";
@@ -15,6 +17,7 @@ type SwarmRegistryEntry = {
   id: string;
   title: string;
   purpose: string;
+  agentIds: string[];
   isDefault: boolean;
   isRemovable: boolean;
   state: SwarmState;
@@ -33,6 +36,32 @@ type SwarmRegistryEntry = {
   }>;
 };
 
+type SwarmGoal = {
+  id: string;
+  title: string;
+  status: "planned" | "active" | "blocked" | "needs_review" | "completed" | "cancelled";
+  ownerAgentId?: string;
+};
+
+type SwarmWorkflow = {
+  id: string;
+  status: "draft" | "active" | "paused" | "archived";
+  ownerAgentId: string;
+};
+
+type SwarmWorkflowRun = {
+  workflowId: string;
+  status:
+    | "queued"
+    | "running"
+    | "awaiting_approval"
+    | "blocked"
+    | "succeeded"
+    | "failed"
+    | "denied"
+    | "cancelled";
+};
+
 const STATE_LABELS: Record<SwarmState, string> = {
   working: "Working",
   waiting: "Waiting",
@@ -41,8 +70,18 @@ const STATE_LABELS: Record<SwarmState, string> = {
   not_launched: "Not launched",
 };
 
+const OPEN_RUN_STATUSES = new Set<SwarmWorkflowRun["status"]>([
+  "queued",
+  "running",
+  "awaiting_approval",
+  "blocked",
+]);
+
 export const SwarmDirectoryPanel = () => {
   const [swarms, setSwarms] = useState<SwarmRegistryEntry[]>([]);
+  const [goals, setGoals] = useState<SwarmGoal[]>([]);
+  const [workflows, setWorkflows] = useState<SwarmWorkflow[]>([]);
+  const [workflowRuns, setWorkflowRuns] = useState<SwarmWorkflowRun[]>([]);
   const [roles, setRoles] = useState<Array<{ id: string; title: string }>>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -61,9 +100,11 @@ export const SwarmDirectoryPanel = () => {
     let isCurrent = true;
     const loadSwarms = async () => {
       try {
-        const response = await fetch(buildSwarmRegistryUrl(), {
-          headers: { Accept: "application/json" },
-        });
+        const [response, goalsResponse, workflowsResponse] = await Promise.all([
+          fetch(buildSwarmRegistryUrl(), { headers: { Accept: "application/json" } }),
+          fetch(buildGoalsUrl(), { headers: { Accept: "application/json" } }),
+          fetch(buildWorkflowsUrl(), { headers: { Accept: "application/json" } }),
+        ]);
         const payload = (await response.json().catch(() => ({}))) as {
           swarms?: unknown;
           error?: string;
@@ -73,6 +114,28 @@ export const SwarmDirectoryPanel = () => {
         }
         if (isCurrent) {
           setSwarms(Array.isArray(payload.swarms) ? (payload.swarms as SwarmRegistryEntry[]) : []);
+          if (goalsResponse.ok) {
+            const goalsPayload = (await goalsResponse.json().catch(() => ({}))) as {
+              goals?: unknown;
+            };
+            setGoals(Array.isArray(goalsPayload.goals) ? (goalsPayload.goals as SwarmGoal[]) : []);
+          }
+          if (workflowsResponse.ok) {
+            const workflowsPayload = (await workflowsResponse.json().catch(() => ({}))) as {
+              workflows?: unknown;
+              runs?: unknown;
+            };
+            setWorkflows(
+              Array.isArray(workflowsPayload.workflows)
+                ? (workflowsPayload.workflows as SwarmWorkflow[])
+                : [],
+            );
+            setWorkflowRuns(
+              Array.isArray(workflowsPayload.runs)
+                ? (workflowsPayload.runs as SwarmWorkflowRun[])
+                : [],
+            );
+          }
           setErrorMessage(null);
         }
       } catch (error) {
@@ -234,72 +297,96 @@ export const SwarmDirectoryPanel = () => {
         </ActionButton>
       </form>
       <div className="settings-swarm-grid">
-        {swarms.map((swarm) => (
-          <article className="settings-swarm-card" data-state={swarm.state} key={swarm.id}>
-            <div className="settings-agent-directory-topline">
-              <div>
-                <span className="settings-agent-directory-title">{swarm.title}</span>
-                <span className="settings-agent-directory-role">
-                  {swarm.roleCount} permanent roles
-                </span>
+        {swarms.map((swarm) => {
+          const swarmAgentIds = new Set(swarm.agentIds);
+          const swarmGoals = goals.filter(
+            (goal) => goal.ownerAgentId !== undefined && swarmAgentIds.has(goal.ownerAgentId),
+          );
+          const activeGoalCount = swarmGoals.filter((goal) => goal.status === "active").length;
+          const blockedGoalCount = swarmGoals.filter((goal) => goal.status === "blocked").length;
+          const activeWorkflows = workflows.filter(
+            (workflow) => workflow.status === "active" && swarmAgentIds.has(workflow.ownerAgentId),
+          );
+          const activeWorkflowIds = new Set(activeWorkflows.map((workflow) => workflow.id));
+          const openRunCount = workflowRuns.filter(
+            (run) => activeWorkflowIds.has(run.workflowId) && OPEN_RUN_STATUSES.has(run.status),
+          ).length;
+
+          return (
+            <article className="settings-swarm-card" data-state={swarm.state} key={swarm.id}>
+              <div className="settings-agent-directory-topline">
+                <div>
+                  <span className="settings-agent-directory-title">{swarm.title}</span>
+                  <span className="settings-agent-directory-role">
+                    {swarm.roleCount} permanent roles
+                  </span>
+                </div>
+                <span className="settings-agent-directory-state">{STATE_LABELS[swarm.state]}</span>
               </div>
-              <span className="settings-agent-directory-state">{STATE_LABELS[swarm.state]}</span>
-            </div>
-            <p>{swarm.purpose}</p>
-            <div className="settings-swarm-counts">
-              <span>{swarm.workingCount} working</span>
-              <span>{swarm.waitingCount} waiting</span>
-              <span>{swarm.readyCount} ready</span>
-              <span>{swarm.preparedCount} prepared</span>
-              <span>{swarm.notLaunchedCount} not launched</span>
-            </div>
-            {swarm.activeRoles.length > 0 ? (
-              <ul
-                className="settings-swarm-activity-list"
-                aria-label={`${swarm.title} live activity`}
-              >
-                {swarm.activeRoles.map((agent) => (
-                  <li key={agent.id}>
-                    <span className="settings-swarm-activity-title">{agent.title}</span>
-                    <span className="settings-swarm-activity-state">
-                      {STATE_LABELS[agent.state]}
-                    </span>
-                    <span className="settings-swarm-activity-summary">{agent.currentActivity}</span>
-                    {agent.activityUpdatedAt ? (
-                      <span className="settings-swarm-activity-time">
-                        Last report {formatTimestamp(agent.activityUpdatedAt)}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="settings-swarm-empty-activity">
-                No live roles yet. Start a scoped role terminal when this swarm has work to do.
-              </p>
-            )}
-            {swarm.isDefault ? (
-              <p className="settings-swarm-protected">Default swarm: permanent project lane.</p>
-            ) : !swarm.isRemovable ? (
-              <p className="settings-swarm-protected">
-                Release or clean up its active role terminals before removing this custom swarm.
-              </p>
-            ) : (
-              <div className="settings-swarm-actions">
-                <span>Custom swarm: safe to remove when its project is finished.</span>
-                <ActionButton
-                  aria-label={`Remove ${swarm.title}`}
-                  onClick={() => setRemovingSwarm(swarm)}
-                  size="dense"
-                  type="button"
-                  variant="danger"
+              <p>{swarm.purpose}</p>
+              <div className="settings-swarm-counts">
+                <span>{swarm.workingCount} working</span>
+                <span>{swarm.waitingCount} waiting</span>
+                <span>{swarm.readyCount} ready</span>
+                <span>{swarm.preparedCount} prepared</span>
+                <span>{swarm.notLaunchedCount} not launched</span>
+              </div>
+              <div className="settings-swarm-plan" aria-label={`${swarm.title} work plan`}>
+                <span>{activeGoalCount} active goals</span>
+                <span>{activeWorkflows.length} active workflows</span>
+                <span>{openRunCount} open workflow runs</span>
+                {blockedGoalCount > 0 ? <span>{blockedGoalCount} blocked goals</span> : null}
+              </div>
+              {swarm.activeRoles.length > 0 ? (
+                <ul
+                  className="settings-swarm-activity-list"
+                  aria-label={`${swarm.title} live activity`}
                 >
-                  Remove custom swarm
-                </ActionButton>
-              </div>
-            )}
-          </article>
-        ))}
+                  {swarm.activeRoles.map((agent) => (
+                    <li key={agent.id}>
+                      <span className="settings-swarm-activity-title">{agent.title}</span>
+                      <span className="settings-swarm-activity-state">
+                        {STATE_LABELS[agent.state]}
+                      </span>
+                      <span className="settings-swarm-activity-summary">
+                        {agent.currentActivity}
+                      </span>
+                      {agent.activityUpdatedAt ? (
+                        <span className="settings-swarm-activity-time">
+                          Last report {formatTimestamp(agent.activityUpdatedAt)}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="settings-swarm-empty-activity">
+                  No live roles yet. Start a scoped role terminal when this swarm has work to do.
+                </p>
+              )}
+              {swarm.isDefault ? (
+                <p className="settings-swarm-protected">Default swarm: permanent project lane.</p>
+              ) : !swarm.isRemovable ? (
+                <p className="settings-swarm-protected">
+                  Release or clean up its active role terminals before removing this custom swarm.
+                </p>
+              ) : (
+                <div className="settings-swarm-actions">
+                  <span>Custom swarm: safe to remove when its project is finished.</span>
+                  <ActionButton
+                    aria-label={`Remove ${swarm.title}`}
+                    onClick={() => setRemovingSwarm(swarm)}
+                    size="dense"
+                    type="button"
+                    variant="danger"
+                  >
+                    Remove custom swarm
+                  </ActionButton>
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
       {removingSwarm ? (
         <ConfirmationDialog

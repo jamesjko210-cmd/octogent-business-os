@@ -4,6 +4,19 @@ This log records verified Octogent changes before they are committed and publish
 
 ## Unreleased
 
+## 2026-08-05 - Public Repository Baseline
+
+### Published
+
+- Published the verified Octogent Business OS baseline to the user-owned public repository: `https://github.com/jamesjko210-cmd/octogent-business-os`.
+- Initial published commit: `d22601c204e604b94deeffc0fb4acd17e0cfae41` (`feat: establish Octogent Business OS harness`).
+- Confirmed GitHub visibility is `PUBLIC` and the default branch is `main`.
+
+### Verification
+
+- Before publication: core 6/6, API 229/229, and web 118/118 tests passed; all TypeScript checks, web production build, full Biome check, and `git diff --check` passed.
+- Publication verification confirmed the repository URL, `main` default branch, and the exact commit SHA through GitHub CLI.
+
 ### Added
 
 - Agent Directory API and Systems dashboard cards for 13 permanent operating roles, including a plain-language purpose, launch reason, scoped provider/tentacle, and real terminal-derived status.

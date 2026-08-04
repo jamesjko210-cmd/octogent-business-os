@@ -76,6 +76,12 @@ export const buildTerminalsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/terminals");
 };
 
+export const buildTerminalPruneUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = "/api/terminals/prune";
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildTerminalItemUrl = (terminalId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
   const path = `/api/terminals/${encodeURIComponent(terminalId)}`;
   if (!runtimeBaseUrl) {

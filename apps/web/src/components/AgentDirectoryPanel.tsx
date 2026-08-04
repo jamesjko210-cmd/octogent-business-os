@@ -4,6 +4,7 @@ import {
   buildAgentInboxUrl,
   buildAgentRosterUrl,
   buildTerminalItemUrl,
+  buildTerminalPruneUrl,
   buildTerminalStartUrl,
   buildTerminalsUrl,
 } from "../runtime/runtimeEndpoints";
@@ -266,6 +267,9 @@ export const AgentDirectoryPanel = () => {
   const [registeringAgentId, setRegisteringAgentId] = useState<string | null>(null);
   const [startingAgentId, setStartingAgentId] = useState<string | null>(null);
   const [releasingAgentId, setReleasingAgentId] = useState<string | null>(null);
+  const [isPruneDialogOpen, setIsPruneDialogOpen] = useState(false);
+  const [isPruning, setIsPruning] = useState(false);
+  const [pruneNotice, setPruneNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -369,6 +373,57 @@ export const AgentDirectoryPanel = () => {
     }
   };
 
+  const pruneEndedTerminals = async () => {
+    setIsPruning(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch(buildTerminalPruneUrl(), {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        prunedTerminalIds?: unknown;
+      };
+      if (!response.ok) throw new Error(toErrorMessage(payload));
+      const prunedTerminalIds = Array.isArray(payload.prunedTerminalIds)
+        ? payload.prunedTerminalIds.filter(
+            (terminalId): terminalId is string => typeof terminalId === "string",
+          )
+        : [];
+      const pruned = new Set(prunedTerminalIds);
+      setAgents((current) =>
+        current.map((agent) => {
+          const terminalIds = agent.terminalIds.filter((terminalId) => !pruned.has(terminalId));
+          return terminalIds.length > 0
+            ? { ...agent, terminalIds }
+            : (() => {
+                const { activityStatus: _activityStatus, ...unlaunchedAgent } = agent;
+                return {
+                  ...unlaunchedAgent,
+                  state: "not_launched" as const,
+                  providerConnection: "not_started" as const,
+                  currentActivity: "No matching terminal is launched yet.",
+                  terminalIds,
+                };
+              })();
+        }),
+      );
+      setPruneNotice(
+        prunedTerminalIds.length === 0
+          ? "No ended terminals needed cleanup."
+          : `Released ${prunedTerminalIds.length} ended terminal${prunedTerminalIds.length === 1 ? "" : "s"}.`,
+      );
+      setIsPruneDialogOpen(false);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to clean up ended terminals.",
+      );
+    } finally {
+      setIsPruning(false);
+    }
+  };
+
   return (
     <section
       className="settings-panel settings-panel--agent-directory"
@@ -386,6 +441,23 @@ export const AgentDirectoryPanel = () => {
       </header>
 
       {errorMessage && <p className="settings-agentic-os-error">{errorMessage}</p>}
+      {pruneNotice ? <p className="settings-agent-directory-notice">{pruneNotice}</p> : null}
+
+      <div className="settings-agent-directory-actions">
+        <ActionButton
+          onClick={() => {
+            setIsPruneDialogOpen(true);
+          }}
+          size="dense"
+          type="button"
+          variant="danger"
+        >
+          Clean up ended agents
+        </ActionButton>
+        <small>
+          Removes only stale, stopped, or exited terminal records. Permanent roles stay.
+        </small>
+      </div>
 
       <div className="settings-agent-directory-grid">
         {agents.map((agent) => (
@@ -523,6 +595,29 @@ export const AgentDirectoryPanel = () => {
           </article>
         ))}
       </div>
+      {isPruneDialogOpen ? (
+        <ConfirmationDialog
+          ariaLabel="Clean up ended agents"
+          confirmLabel={isPruning ? "Cleaning up..." : "Clean up ended agents"}
+          isBusy={isPruning}
+          isConfirmDisabled={isPruning}
+          message={
+            <>
+              Remove every stale, stopped, or exited temporary terminal record. Active and prepared
+              terminals are not eligible. Permanent roles, role inboxes, shared memory, and audit
+              history will remain.
+            </>
+          }
+          onCancel={() => {
+            if (!isPruning) setIsPruneDialogOpen(false);
+          }}
+          onConfirm={() => {
+            void pruneEndedTerminals();
+          }}
+          title="Clean up ended agents"
+          warning="This removes ended terminal records and any linked worktree cleanup handled by Octogent. Confirm only after their work is finished."
+        />
+      ) : null}
     </section>
   );
 };

@@ -4,6 +4,14 @@ This log records verified Octogent changes before they are committed and publish
 
 ## Unreleased
 
+### Added
+
+- Agent Directory now includes **Clean up ended agents**, a reviewed bulk release for stale, stopped, or exited temporary terminal records. It does not remove permanent roles, role inboxes, shared memory, or audit history.
+
+### Verification
+
+- Latest cleanup-control audit passed: core 6/6, API 235/235, and web 123/123 tests. Core/API/web TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
+
 ## 2026-08-05 - Public Repository Baseline
 
 ### Published

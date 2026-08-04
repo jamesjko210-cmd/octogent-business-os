@@ -268,6 +268,60 @@ describe("AgentDirectoryPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("cleans up ended terminals without removing permanent roles", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            agents: [
+              {
+                id: "codex-executor",
+                title: "Codex Executor",
+                role: "Scoped implementation and testing",
+                tentacleId: "game-business",
+                preferredProvider: "codex",
+                purpose: "Builds and tests a scoped change.",
+                spawnReason: "Launch this for a defined coding task.",
+                memoryAccess: "shared-project-memory",
+                state: "not_launched",
+                currentActivity: "No matching terminal is launched yet.",
+                terminalIds: ["stale-codex-role-terminal"],
+                executionScope: { workspaceMode: "worktree", allowedTools: ["terminal"] },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ prunedTerminalIds: ["stale-codex-role-terminal"] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AgentDirectoryPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Clean up ended agents" }));
+    expect(
+      await screen.findByRole("heading", { name: "Clean up ended agents" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm clean up ended agents" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        "/api/terminals/prune",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    expect(await screen.findByText("Released 1 ended terminal.")).toBeInTheDocument();
+    expect(screen.getByText("Codex Executor")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Register role terminal" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows a prepared role without implying that its provider has started", async () => {
     const fetchMock = vi
       .fn()

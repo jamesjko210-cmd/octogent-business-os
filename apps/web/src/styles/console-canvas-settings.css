@@ -465,6 +465,26 @@
   white-space: nowrap;
 }
 
+.settings-agent-directory-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.7rem 0;
+}
+
+.settings-agent-directory-actions small,
+.settings-agent-directory-notice {
+  color: #9eb0c8;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.settings-agent-directory-notice {
+  margin: 0.6rem 0;
+  color: #c2f5d4;
+}
+
 .settings-agent-directory-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

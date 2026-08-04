@@ -24,6 +24,7 @@ import {
   buildTentacleGitSyncUrl,
   buildTentacleRenameUrl,
   buildTerminalEventsSocketUrl,
+  buildTerminalPruneUrl,
   buildTerminalSnapshotsUrl,
   buildTerminalSocketUrl,
   buildTerminalsUrl,
@@ -78,6 +79,13 @@ describe("runtimeEndpoints", () => {
 
   it("builds terminal creation URL on same origin by default", () => {
     expect(buildTerminalsUrl()).toBe("/api/terminals");
+  });
+
+  it("builds safe terminal cleanup URL on same origin and configured runtime origins", () => {
+    expect(buildTerminalPruneUrl()).toBe("/api/terminals/prune");
+    expect(buildTerminalPruneUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/terminals/prune",
+    );
   });
 
   it("builds absolute terminal creation URL when runtime base URL is configured", () => {

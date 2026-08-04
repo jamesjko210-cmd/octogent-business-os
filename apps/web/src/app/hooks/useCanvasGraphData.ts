@@ -65,6 +65,10 @@ type UseCanvasGraphDataResult = {
 const buildTentacleNodeId = (tentacleId: string) => `t:${tentacleId}`;
 const buildActiveSessionNodeId = (agentId: string) => `a:${agentId}`;
 const buildInactiveSessionNodeId = (sessionId: string) => `i:${sessionId}`;
+const RESEARCH_STAGE_IDS = ["scout", "source-review", "memory", "strategy", "execution"] as const;
+type ResearchStageId = (typeof RESEARCH_STAGE_IDS)[number];
+const isResearchStageId = (value: unknown): value is ResearchStageId =>
+  typeof value === "string" && RESEARCH_STAGE_IDS.includes(value as ResearchStageId);
 
 const normalizeDeckTentacleSummary = (value: unknown): DeckTentacleSummary | null => {
   if (value === null || typeof value !== "object") {
@@ -112,6 +116,42 @@ const normalizeDeckTentacleSummary = (value: unknown): DeckTentacleSummary | nul
     record.status === "needs-review"
       ? record.status
       : "idle";
+  const researchWorkflowRecord =
+    record.researchWorkflow !== null && typeof record.researchWorkflow === "object"
+      ? (record.researchWorkflow as Record<string, unknown>)
+      : null;
+  const researchWorkflowStage = isResearchStageId(researchWorkflowRecord?.stage)
+    ? researchWorkflowRecord.stage
+    : researchWorkflowRecord?.stage === "complete"
+      ? "complete"
+      : null;
+  const researchWorkflowStages =
+    researchWorkflowRecord && Array.isArray(researchWorkflowRecord.stages)
+      ? researchWorkflowRecord.stages
+          .map((stage) => {
+            if (stage === null || typeof stage !== "object") return null;
+            const stageRecord = stage as Record<string, unknown>;
+            if (!isResearchStageId(stageRecord.id) || typeof stageRecord.label !== "string") {
+              return null;
+            }
+            return {
+              id: stageRecord.id,
+              label: stageRecord.label,
+              done: stageRecord.done === true,
+              active: stageRecord.active === true,
+            };
+          })
+          .filter(
+            (
+              stage,
+            ): stage is {
+              id: ResearchStageId;
+              label: string;
+              done: boolean;
+              active: boolean;
+            } => stage !== null,
+          )
+      : [];
 
   return {
     tentacleId: record.tentacleId,
@@ -145,6 +185,13 @@ const normalizeDeckTentacleSummary = (value: unknown): DeckTentacleSummary | nul
         ? record.todoDone
         : todoItems.filter((item) => item.done).length,
     todoItems,
+    researchWorkflow:
+      researchWorkflowStage && researchWorkflowStages.length > 0
+        ? {
+            stage: researchWorkflowStage,
+            stages: researchWorkflowStages,
+          }
+        : null,
     suggestedSkills: Array.isArray(record.suggestedSkills)
       ? record.suggestedSkills.filter((skill): skill is string => typeof skill === "string")
       : [],
@@ -274,7 +321,7 @@ export const useCanvasGraphData = ({
     const label = deck?.displayName ?? firstActiveTerminal?.tentacleName ?? tentacleId;
 
     const angle = (2 * Math.PI * i) / Math.max(totalTentacles, 1);
-    const spread = 300;
+    const spread = 520;
 
     const node: GraphNode = {
       id: tentacleNodeId,

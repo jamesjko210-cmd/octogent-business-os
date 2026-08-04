@@ -80,7 +80,7 @@ The managed block is rewritten by the API when suggested skills change. Put huma
 
 The runtime parses checkbox lines and computes progress.
 
-Only lines that match `- [ ] text` or `- [x] text` are treated as todo items. Their order matters because swarm creation uses the parsed item index when it creates worker terminal IDs such as `<tentacle-id>-swarm-0`.
+Only lines that match `- [ ] text` or `- [x] text` are treated as todo items. Their order matters because swarm creation uses the parsed item index when it creates worker terminal IDs such as `<tentacle-id>-swarm-0` or `<tentacle-id>-swarm-business-0` for named swarms.
 
 When the UI toggles, edits, adds, or deletes todos, it rewrites `todo.md`. There is no hidden todo store.
 

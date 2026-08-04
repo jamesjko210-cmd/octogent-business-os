@@ -4,8 +4,10 @@ import type { UsageChartResponse } from "../claudeSessionScanner";
 import type { ClaudeUsageSnapshot } from "../claudeUsage";
 import type { CodeIntelStore } from "../codeIntelStore";
 import type { CodexUsageSnapshot } from "../codexUsage";
+import type { GitHubPublishReadiness } from "../githubPublishReadiness";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import type { MonitorService } from "../monitor";
+import type { TelegramBridge } from "../telegramBridge";
 import { RequestBodyTooLargeError, readJsonBody } from "./requestParsers";
 import { withCors } from "./security";
 
@@ -24,10 +26,13 @@ export type RouteHandlerDependencies = {
   readClaudeCliUsageSnapshot: () => Promise<ClaudeUsageSnapshot>;
   readCodexUsageSnapshot: () => Promise<CodexUsageSnapshot>;
   readGithubRepoSummary: () => Promise<GitHubRepoSummarySnapshot>;
+  readGithubPublishReadiness: () => Promise<GitHubPublishReadiness>;
   scanUsageHeatmap: (scope: "all" | "project") => Promise<UsageChartResponse>;
   monitorService: MonitorService;
   invalidateClaudeUsageCache: () => void;
   codeIntelStore: CodeIntelStore;
+  telegramBridge: TelegramBridge;
+  obsidianVaultPath: string;
 };
 
 export type RouteHandlerContext = {

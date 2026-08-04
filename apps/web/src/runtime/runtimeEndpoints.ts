@@ -76,6 +76,27 @@ export const buildTerminalsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/terminals");
 };
 
+export const buildTerminalItemUrl = (terminalId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/terminals/${encodeURIComponent(terminalId)}`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildTerminalStartUrl = (
+  terminalId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/terminals/${encodeURIComponent(terminalId)}/start`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildCodexUsageUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/codex/usage";
@@ -98,6 +119,14 @@ export const buildGithubSummaryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => 
   }
 
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/github/summary");
+};
+
+export const buildGithubPublishReadinessUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/github/publish-readiness";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/github/publish-readiness");
 };
 
 export const buildUiStateUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
@@ -152,6 +181,133 @@ export const buildMonitorRefreshUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) =>
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/monitor/refresh");
 };
 
+export const buildWorkflowsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/workflows";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/workflows");
+};
+
+export const buildAgentRosterUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/agents";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/agents");
+};
+
+export const buildSessionHistoryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/sessions";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/sessions");
+};
+
+export const buildAgentInboxUrl = (agentId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/agents/${encodeURIComponent(agentId)}/inbox`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildOperatorUpdatesUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = "/api/operator-updates";
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildSwarmRegistryUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/swarms";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/swarms");
+};
+
+export const buildGoalsUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  if (!runtimeBaseUrl) {
+    return "/api/goals";
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, "/api/goals");
+};
+
+export const buildGoalItemUrl = (goalId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/goals/${encodeURIComponent(goalId)}`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowStatusUrl = (
+  workflowId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/workflows/${encodeURIComponent(workflowId)}`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowRunsUrl = (workflowId: string, runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = `/api/workflows/${encodeURIComponent(workflowId)}/runs`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowRunDecisionUrl = (
+  workflowId: string,
+  runId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/workflows/${encodeURIComponent(workflowId)}/runs/${encodeURIComponent(runId)}`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowRunClaimUrl = (
+  workflowId: string,
+  runId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/workflows/${encodeURIComponent(workflowId)}/runs/${encodeURIComponent(runId)}/claim`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildWorkflowRunLocalExecutionUrl = (
+  workflowId: string,
+  runId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const path = `/api/workflows/${encodeURIComponent(workflowId)}/runs/${encodeURIComponent(runId)}/execute-local`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildUsageHeatmapUrl = (
   scope: "all" | "project" = "all",
   runtimeBaseUrl = readRuntimeBaseUrl(),
@@ -204,6 +360,53 @@ export const buildConversationExportUrl = (
 ) => {
   const encodedSessionId = encodeURIComponent(sessionId);
   const path = `/api/conversations/${encodedSessionId}/export?format=${format}`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildChannelMessagesUrl = (
+  terminalId: string,
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const encodedTerminalId = encodeURIComponent(terminalId);
+  const path = `/api/channels/${encodedTerminalId}/messages`;
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildAllChannelMessagesUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = "/api/channels";
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildTelegramStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = "/api/telegram/status";
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
+export const buildMemoryUrl = (
+  options: { query?: string; tentacleId?: string } = {},
+  runtimeBaseUrl = readRuntimeBaseUrl(),
+) => {
+  const searchParams = new URLSearchParams();
+  if (options.query?.trim()) searchParams.set("query", options.query.trim());
+  if (options.tentacleId?.trim()) searchParams.set("tentacleId", options.tentacleId.trim());
+  const query = searchParams.toString();
+  const path = `/api/memory${query ? `?${query}` : ""}`;
   if (!runtimeBaseUrl) {
     return path;
   }

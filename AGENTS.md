@@ -55,6 +55,22 @@
 - Keep docs in sync with behavior changes when user-facing workflows, commands, persistence layout, or architecture assumptions change.
 - Preserve the product vocabulary already documented in `CLAUDE.md`: agents, sessions, worktrees, logs, pipelines, tentacles, and terminal columns.
 
+## Shared Memory
+- Use the parent workspace `agentmemory` plan as the first shared memory layer for Octogent agents.
+- Record Center remains the official project ledger; agentmemory stores reusable decisions, lessons, preferences, and handoffs.
+- Before saving memory, check whether the same fact belongs in `.octogent/tentacles/*/record-center.md` instead.
+- Never save secrets, credentials, or raw personal playtester data into memory.
+- See `../docs/agent-memory/agentmemory-integration.md` and `../docs/agent-memory/mcp-config-snippets.md`.
+
+## Orchestration Defaults
+
+- **GPT-5.6 Sol is the Chief**: frame the goal, define acceptance criteria, select the smallest safe plan, and integrate specialist findings.
+- **GPT Terra is the Executor**: own scoped implementation and direct verification. Do not mix planning, implementation, and independent review in one unexamined claim.
+- Assign specialist checks by task: research for current facts, security for trust boundaries, UX for operator-facing flows, and testing for behavior/regressions.
+- Keep one integration owner for edits. Parallel reviewers should inspect independently and return evidence, not edit the same surface.
+- Prefer tested repository facts over agent memory. State assumptions, uncertainty, and remaining risks plainly.
+- Do not claim these preferred model identities are installed or running until a configured runtime confirms that fact.
+
 ## Verification
 - Install: `pnpm install`
 - Dev: `pnpm dev`

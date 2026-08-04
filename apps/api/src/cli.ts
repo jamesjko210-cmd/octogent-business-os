@@ -198,6 +198,111 @@ const maybeOpenBrowser = (url: string) => {
   }
 };
 
+type ConnectorId =
+  | "claude"
+  | "notion"
+  | "antigravity"
+  | "gemini"
+  | "codex"
+  | "stitch"
+  | "perplexity"
+  | "notebooklm"
+  | "lm-studio";
+
+const CONNECTOR_URLS: Record<
+  ConnectorId,
+  { label: string; envVar: string; defaultUrl: string; role: string }
+> = {
+  notion: {
+    label: "Notion",
+    envVar: "OCTOGENT_NOTION_URL",
+    defaultUrl: "https://www.notion.com/",
+    role: "memory, decision logs, docs, and operating system knowledge",
+  },
+  claude: {
+    label: "Claude",
+    envVar: "OCTOGENT_CLAUDE_URL",
+    defaultUrl: "https://claude.ai/",
+    role: "planning, business operations, coding operations, and synthesis",
+  },
+  stitch: {
+    label: "Google Stitch",
+    envVar: "OCTOGENT_STITCH_URL",
+    defaultUrl: "https://stitch.withgoogle.com/",
+    role: "UI/UX ideation, screen generation, and design handoff",
+  },
+  antigravity: {
+    label: "Google Antigravity",
+    envVar: "OCTOGENT_ANTIGRAVITY_URL",
+    defaultUrl: "https://antigravity.google/",
+    role: "agentic planning, review, and alternate coding paths",
+  },
+  gemini: {
+    label: "Gemini",
+    envVar: "OCTOGENT_GEMINI_URL",
+    defaultUrl: "https://gemini.google.com/",
+    role: "Google-family research and broad exploration",
+  },
+  codex: {
+    label: "Codex",
+    envVar: "OCTOGENT_CODEX_URL",
+    defaultUrl: "https://chatgpt.com/codex",
+    role: "code execution, tests, builds, and repository maintenance",
+  },
+  perplexity: {
+    label: "Perplexity",
+    envVar: "OCTOGENT_PERPLEXITY_URL",
+    defaultUrl: "https://www.perplexity.ai/",
+    role: "current-source research and citation-heavy market checks",
+  },
+  notebooklm: {
+    label: "NotebookLM",
+    envVar: "OCTOGENT_NOTEBOOKLM_URL",
+    defaultUrl: "https://notebooklm.google.com/",
+    role: "curated source-grounded research, selected-source Q&A, and source review",
+  },
+  "lm-studio": {
+    label: "Qwen / LM Studio",
+    envVar: "OCTOGENT_LM_STUDIO_URL",
+    defaultUrl: "https://lmstudio.ai/",
+    role: "Qwen local workers for private, low-cost drafting, tagging, and memory extraction",
+  },
+};
+
+const isConnectorId = (value: string | undefined): value is ConnectorId =>
+  value === "claude" ||
+  value === "notion" ||
+  value === "antigravity" ||
+  value === "gemini" ||
+  value === "codex" ||
+  value === "stitch" ||
+  value === "perplexity" ||
+  value === "notebooklm" ||
+  value === "lm-studio";
+
+const openConnector = () => {
+  const connectorId = args[2];
+  if (!isConnectorId(connectorId)) {
+    console.error(
+      "Error: connector must be one of: claude, notion, antigravity, gemini, codex, stitch, perplexity, notebooklm, lm-studio.",
+    );
+    process.exit(1);
+  }
+
+  const connector = CONNECTOR_URLS[connectorId];
+  const url = process.env[connector.envVar]?.trim() || connector.defaultUrl;
+
+  console.log(`${connector.label}: ${connector.role}`);
+  console.log(`Opening ${url}`);
+  console.log(`Override with ${connector.envVar}=<url>`);
+
+  if (process.env.OCTOGENT_CONNECTOR_DRY_RUN === "1") {
+    return;
+  }
+
+  maybeOpenBrowser(url);
+};
+
 const startServer = async () => {
   const startupPrerequisiteReport = collectStartupPrerequisiteReport();
   const startupPrerequisiteLines = formatStartupPrerequisiteReport(startupPrerequisiteReport);
@@ -392,10 +497,49 @@ const tentacleList = async () => {
   }
 };
 
+const tentacleSwarm = async () => {
+  const tentacleId = args[2];
+  if (!tentacleId || tentacleId.startsWith("-")) {
+    console.error("Error: tentacle ID is required.");
+    process.exit(1);
+  }
+
+  const workspaceMode = parseFlag("--workspace-mode") ?? parseFlag("-w");
+  const agentProvider = parseFlag("--agent-provider") ?? parseFlag("--provider");
+  const swarmId = parseFlag("--swarm-id") ?? parseFlag("--swarm-name") ?? parseFlag("--name");
+  const apiBase = resolveRuntimeApiBase();
+
+  const body: Record<string, unknown> = {};
+  if (workspaceMode) body.workspaceMode = workspaceMode;
+  if (agentProvider) body.agentProvider = agentProvider;
+  if (swarmId) body.swarmId = swarmId;
+
+  try {
+    const response = await fetch(
+      `${apiBase}/api/deck/tentacles/${encodeURIComponent(tentacleId)}/swarm`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      console.error(`Error: ${data.error ?? "Failed"}`);
+      process.exit(1);
+    }
+    const swarmLabel = typeof data.swarmId === "string" ? ` (${data.swarmId})` : "";
+    console.log(`Created swarm${swarmLabel} for tentacle "${data.tentacleId}"`);
+  } catch {
+    apiError();
+  }
+};
+
 const terminalCreate = async () => {
   const name = parseFlag("--name") ?? parseFlag("-n");
   const initialPrompt = parseFlag("--initial-prompt") ?? parseFlag("-p");
   const workspaceMode = parseFlag("--workspace-mode") ?? parseFlag("-w") ?? "shared";
+  const agentProvider = parseFlag("--agent-provider") ?? parseFlag("--provider");
   const terminalId = parseFlag("--terminal-id");
   const tentacleId = parseFlag("--tentacle-id");
   const worktreeId = parseFlag("--worktree-id");
@@ -410,6 +554,7 @@ const terminalCreate = async () => {
   if (name) body.name = name;
   if (initialPrompt) body.initialPrompt = initialPrompt;
   if (workspaceMode) body.workspaceMode = workspaceMode;
+  if (agentProvider) body.agentProvider = agentProvider;
   if (terminalId) body.terminalId = terminalId;
   if (tentacleId) body.tentacleId = tentacleId;
   if (worktreeId) body.worktreeId = worktreeId;
@@ -471,7 +616,7 @@ const terminalList = async () => {
   }
 };
 
-const terminalAction = async (action: "stop" | "kill") => {
+const terminalAction = async (action: "start" | "stop" | "kill") => {
   const terminalId = args[2];
   if (!terminalId || terminalId.startsWith("-")) {
     console.error("Error: terminalId is required.");
@@ -492,7 +637,8 @@ const terminalAction = async (action: "stop" | "kill") => {
       console.error(`Error: ${data.error ?? "Failed"}`);
       process.exit(1);
     }
-    console.log(`${action === "kill" ? "Killed" : "Stopped"} terminal "${data.terminalId}"`);
+    const actionLabel = action === "start" ? "Started" : action === "kill" ? "Killed" : "Stopped";
+    console.log(`${actionLabel} terminal "${data.terminalId}"`);
   } catch {
     apiError();
   }
@@ -530,7 +676,8 @@ const channelSend = async () => {
     process.exit(1);
   }
 
-  const fromTerminalId = parseFlag("--from") ?? process.env.OCTOGENT_SESSION_ID ?? "";
+  const fromTerminalId = parseFlag("--from") ?? process.env.OCTOGENT_SESSION_ID ?? "operator";
+  const channelCapability = process.env.OCTOGENT_CHANNEL_CAPABILITY?.trim();
   const fromIndex = args.indexOf("--from");
   const message =
     fromIndex !== -1
@@ -555,11 +702,20 @@ const channelSend = async () => {
 
   const apiBase = resolveRuntimeApiBase();
   try {
+    if (fromTerminalId !== "operator" && !channelCapability) {
+      console.error(
+        "Error: agent-origin channel messages must run inside an active Octogent terminal.",
+      );
+      process.exit(1);
+    }
     const response = await fetch(
       `${apiBase}/api/channels/${encodeURIComponent(terminalId)}/messages`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(channelCapability ? { "X-Octogent-Terminal-Capability": channelCapability } : {}),
+        },
         body: JSON.stringify({ fromTerminalId, content: message }),
       },
     );
@@ -609,6 +765,223 @@ const channelList = async () => {
   }
 };
 
+const agentMessage = async () => {
+  const agentId = args[2];
+  const content = args.slice(3).join(" ").trim();
+  if (!agentId || agentId.startsWith("-") || !content) {
+    console.error("Error: target role ID and message content are required.");
+    process.exit(1);
+  }
+
+  const fromTerminalId = process.env.OCTOGENT_SESSION_ID?.trim();
+  const channelCapability = process.env.OCTOGENT_CHANNEL_CAPABILITY?.trim();
+  if (!fromTerminalId || !channelCapability) {
+    console.error("Error: agent role messages must run inside an active Octogent terminal.");
+    process.exit(1);
+  }
+
+  try {
+    const response = await fetch(
+      `${resolveRuntimeApiBase()}/api/agents/${encodeURIComponent(agentId)}/inbox`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Octogent-Terminal-Capability": channelCapability,
+        },
+        body: JSON.stringify({ fromTerminalId, content }),
+      },
+    );
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      console.error(`Error: ${data.error ?? "Failed"}`);
+      process.exit(1);
+    }
+    console.log(`Role message queued (${data.messageId}) for ${agentId}`);
+  } catch {
+    apiError();
+  }
+};
+
+const AGENT_ACTIVITY_STATUSES = new Set([
+  "planning",
+  "researching",
+  "implementing",
+  "testing",
+  "reviewing",
+  "waiting",
+]);
+
+const agentActivity = async () => {
+  const status = args[2]?.trim() ?? "";
+  const summary = args.slice(3).join(" ").trim();
+  const agentId = process.env.OCTOGENT_AGENT_ID?.trim();
+  const terminalId = process.env.OCTOGENT_SESSION_ID?.trim();
+  const channelCapability = process.env.OCTOGENT_CHANNEL_CAPABILITY?.trim();
+  if (!agentId || !terminalId || !channelCapability) {
+    console.error(
+      "Error: activity updates must run inside an active role-bound Octogent terminal.",
+    );
+    process.exit(1);
+  }
+  if (!AGENT_ACTIVITY_STATUSES.has(status) || !summary) {
+    console.error(
+      "Error: use a valid activity status and concise summary: planning, researching, implementing, testing, reviewing, or waiting.",
+    );
+    process.exit(1);
+  }
+
+  try {
+    const response = await fetch(
+      `${resolveRuntimeApiBase()}/api/agents/${encodeURIComponent(agentId)}/activity`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Octogent-Terminal-Capability": channelCapability,
+        },
+        body: JSON.stringify({ terminalId, status, summary }),
+      },
+    );
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      console.error(`Error: ${data.error ?? "Failed"}`);
+      process.exit(1);
+    }
+    console.log(`Activity reported: ${status}`);
+  } catch {
+    apiError();
+  }
+};
+
+const agentReply = async () => {
+  const content = args.slice(2).join(" ").trim();
+  const agentId = process.env.OCTOGENT_AGENT_ID?.trim();
+  const terminalId = process.env.OCTOGENT_SESSION_ID?.trim();
+  const channelCapability = process.env.OCTOGENT_CHANNEL_CAPABILITY?.trim();
+  if (!agentId || !terminalId || !channelCapability) {
+    console.error(
+      "Error: operator replies must run inside an active role-bound Octogent terminal.",
+    );
+    process.exit(1);
+  }
+  if (!content) {
+    console.error("Error: a concise operator update is required.");
+    process.exit(1);
+  }
+
+  try {
+    const response = await fetch(
+      `${resolveRuntimeApiBase()}/api/agents/${encodeURIComponent(agentId)}/operator-updates`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Octogent-Terminal-Capability": channelCapability,
+        },
+        body: JSON.stringify({ terminalId, content }),
+      },
+    );
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      console.error(`Error: ${data.error ?? "Failed"}`);
+      process.exit(1);
+    }
+    console.log("Operator update queued. The operator can request it with /updates in Telegram.");
+  } catch {
+    apiError();
+  }
+};
+
+const agentObsidianUpdate = async ({ shared = false }: { shared?: boolean } = {}) => {
+  const content = args
+    .slice(shared ? 3 : 2)
+    .join(" ")
+    .trim();
+  const agentId = process.env.OCTOGENT_AGENT_ID?.trim();
+  const terminalId = process.env.OCTOGENT_SESSION_ID?.trim();
+  const channelCapability = process.env.OCTOGENT_CHANNEL_CAPABILITY?.trim();
+  if (!agentId || !terminalId || !channelCapability) {
+    console.error(
+      "Error: Obsidian updates must run inside an active role-bound Octogent terminal.",
+    );
+    process.exit(1);
+  }
+  if (!content) {
+    console.error("Error: a concise Obsidian update is required.");
+    process.exit(1);
+  }
+
+  try {
+    const response = await fetch(
+      `${resolveRuntimeApiBase()}/api/agents/${encodeURIComponent(agentId)}/obsidian`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Octogent-Terminal-Capability": channelCapability,
+        },
+        body: JSON.stringify({ terminalId, content, ...(shared ? { target: "shared" } : {}) }),
+      },
+    );
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      console.error(`Error: ${data.error ?? "Failed"}`);
+      process.exit(1);
+    }
+    console.log(
+      `Obsidian ${shared ? "shared timeline" : "role note"} update appended to ${data.relativePath}`,
+    );
+  } catch {
+    apiError();
+  }
+};
+
+const agentObsidianSearch = async () => {
+  const query = args.slice(3).join(" ").trim();
+  const agentId = process.env.OCTOGENT_AGENT_ID?.trim();
+  const terminalId = process.env.OCTOGENT_SESSION_ID?.trim();
+  const channelCapability = process.env.OCTOGENT_CHANNEL_CAPABILITY?.trim();
+  if (!agentId || !terminalId || !channelCapability) {
+    console.error("Error: Obsidian search must run inside an active role-bound Octogent terminal.");
+    process.exit(1);
+  }
+  if (!query) {
+    console.error("Error: a shared-memory search query is required.");
+    process.exit(1);
+  }
+
+  try {
+    const url = new URL(
+      `${resolveRuntimeApiBase()}/api/agents/${encodeURIComponent(agentId)}/obsidian`,
+    );
+    url.searchParams.set("terminalId", terminalId);
+    url.searchParams.set("query", query);
+    const response = await fetch(url, {
+      headers: { "X-Octogent-Terminal-Capability": channelCapability },
+    });
+    const data = (await response.json()) as {
+      error?: unknown;
+      results?: Array<{ relativePath?: unknown; snippet?: unknown; score?: unknown }>;
+    };
+    if (!response.ok) {
+      console.error(`Error: ${data.error ?? "Failed"}`);
+      process.exit(1);
+    }
+    const results = Array.isArray(data.results) ? data.results : [];
+    if (results.length === 0) {
+      console.log("No shared Obsidian notes matched.");
+      return;
+    }
+    for (const result of results) {
+      console.log(`\n[${result.score ?? 0}] ${result.relativePath ?? "(unknown note)"}`);
+      console.log(String(result.snippet ?? ""));
+    }
+  } catch {
+    apiError();
+  }
+};
+
 const main = async () => {
   if (!command || command === "start") {
     return startServer();
@@ -633,12 +1006,21 @@ const main = async () => {
     return;
   }
 
+  if (command === "connector" || command === "connectors") {
+    if (args[1] === "open") {
+      return openConnector();
+    }
+  }
+
   if (command === "tentacle" || command === "tentacles") {
     if (args[1] === "create") {
       return tentacleCreate();
     }
     if (args[1] === "list" || args[1] === "ls") {
       return tentacleList();
+    }
+    if (args[1] === "swarm") {
+      return tentacleSwarm();
     }
   }
 
@@ -648,6 +1030,9 @@ const main = async () => {
     }
     if (args[1] === "list" || args[1] === "ls") {
       return terminalList();
+    }
+    if (args[1] === "start") {
+      return terminalAction("start");
     }
     if (args[1] === "stop") {
       return terminalAction("stop");
@@ -669,13 +1054,38 @@ const main = async () => {
     }
   }
 
+  if (command === "agent" && args[1] === "message") {
+    return agentMessage();
+  }
+  if (command === "agent" && args[1] === "activity") {
+    return agentActivity();
+  }
+  if (command === "agent" && args[1] === "reply") {
+    return agentReply();
+  }
+  if (command === "agent" && args[1] === "memory") {
+    if (args[2] === "search") {
+      return agentObsidianSearch();
+    }
+    if (args[2] === "share") {
+      return agentObsidianUpdate({ shared: true });
+    }
+    return agentObsidianUpdate();
+  }
+
   console.log(`Usage:
   octogent                             Start the dashboard in the current project
   octogent init [project-name]         Initialize the current directory explicitly
   octogent projects                    List registered projects
+  octogent connector open <id>         Open a free web workflow connector
+    ids: notion | stitch | antigravity | gemini | perplexity | notebooklm | lm-studio
 
   octogent tentacle create <name>      Create a tentacle (Octogent must be running)
   octogent tentacle list               List tentacles
+  octogent tentacle swarm <id>         Spawn a swarm from incomplete todos
+    --swarm-id, --swarm-name, --name   Optional namespace for parallel swarms
+    --workspace-mode, -w               shared | worktree
+    --agent-provider, --provider       claude-code | codex | gemini-cli | perplexity | notebooklm | lm-studio | notion | stitch | antigravity | custom
   octogent terminal create [options]   Create a terminal
     --name, -n                         Terminal display name
     --workspace-mode, -w               shared | worktree
@@ -687,11 +1097,18 @@ const main = async () => {
     --prompt-template                  Prompt template name
     --prompt-variables                 JSON object of prompt template variables
   octogent terminal list               List terminal lifecycle state
+  octogent terminal start <id>         Start a prepared terminal session
   octogent terminal stop <id>          Stop a terminal session
   octogent terminal kill <id>          Kill a terminal session or recorded process
   octogent terminal prune              Remove stale, stopped, and exited terminal records
   octogent channel send <id> <msg>     Send a channel message
-  octogent channel list <id>           List channel messages`);
+  octogent channel list <id>           List channel messages
+  octogent agent message <role> <msg>  Send a capability-checked message to a permanent role
+  octogent agent activity <status> <msg> Report this role's current activity
+  octogent agent reply <msg>            Queue a safe update for /updates in Telegram
+  octogent agent memory <msg>          Append a safe update to this role's Obsidian note
+  octogent agent memory share <msg>    Append a safe update to the shared Obsidian timeline
+  octogent agent memory search <query> Search shared project notes from this live role`);
   process.exit(1);
 };
 

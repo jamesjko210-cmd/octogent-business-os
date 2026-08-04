@@ -1,5 +1,5 @@
 import { Terminal, X } from "lucide-react";
-import { type Ref, useCallback, useMemo, useState } from "react";
+import { type ChangeEvent, type Ref, useCallback, useMemo, useState } from "react";
 
 import type { DeckTentacleSummary, TentacleWorkspaceMode } from "@octogent/core";
 import type { GraphNode } from "../../app/canvas/types";
@@ -70,6 +70,11 @@ function deriveVisuals(tentacle: DeckTentacleSummary) {
   };
 }
 
+const autoGrowTextarea = (element: HTMLTextAreaElement) => {
+  element.style.height = "auto";
+  element.style.height = `${element.scrollHeight}px`;
+};
+
 type CanvasTentaclePanelProps = {
   node: GraphNode;
   isFocused?: boolean;
@@ -80,7 +85,9 @@ type CanvasTentaclePanelProps = {
   sessions: ConversationSessionSummary[];
   onCreateAgent?: ((tentacleId: string) => void) | undefined;
   onSolveTodoItem?: ((tentacleId: string, itemIndex: number) => void) | undefined;
-  onSpawnSwarm?: ((tentacleId: string, workspaceMode: TentacleWorkspaceMode) => void) | undefined;
+  onSpawnSwarm?:
+    | ((tentacleId: string, workspaceMode: TentacleWorkspaceMode, swarmId?: string) => void)
+    | undefined;
   onNavigateToConversation?: ((sessionId: string) => void) | undefined;
   onRefreshTentacleData?: (() => Promise<void>) | undefined;
 };
@@ -126,6 +133,18 @@ export const CanvasTentaclePanel = ({
   const [addingTodo, setAddingTodo] = useState(false);
   const [addText, setAddText] = useState("");
   const [solvingTodoIndex, setSolvingTodoIndex] = useState<number | null>(null);
+  const [swarmId, setSwarmId] = useState("");
+  const currentSwarmId = swarmId.trim() || undefined;
+  const handleSpawnSwarmClick = useCallback(
+    (workspaceMode: TentacleWorkspaceMode) => {
+      if (currentSwarmId) {
+        onSpawnSwarm?.(node.tentacleId, workspaceMode, currentSwarmId);
+        return;
+      }
+      onSpawnSwarm?.(node.tentacleId, workspaceMode);
+    },
+    [currentSwarmId, node.tentacleId, onSpawnSwarm],
+  );
   const refreshTentacleData = useCallback(async () => {
     await onRefreshTentacleData?.();
   }, [onRefreshTentacleData]);
@@ -223,6 +242,16 @@ export const CanvasTentaclePanel = ({
     [node.tentacleId, onSolveTodoItem],
   );
 
+  const handleEditTextChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    setEditText(event.target.value);
+    autoGrowTextarea(event.target);
+  }, []);
+
+  const handleAddTextChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    setAddText(event.target.value);
+    autoGrowTextarea(event.target);
+  }, []);
+
   const progressPct =
     tentacle && tentacle.todoTotal > 0
       ? Math.round((tentacle.todoDone / tentacle.todoTotal) * 100)
@@ -295,17 +324,25 @@ export const CanvasTentaclePanel = ({
             >
               &gt;_ Create Agent
             </button>
+            <input
+              type="text"
+              className="detail-swarm-input"
+              value={swarmId}
+              placeholder="business"
+              aria-label="Swarm namespace"
+              onChange={(event) => setSwarmId(event.target.value)}
+            />
             <button
               type="button"
               className="detail-action-btn"
-              onClick={() => onSpawnSwarm?.(node.tentacleId, "worktree")}
+              onClick={() => handleSpawnSwarmClick("worktree")}
             >
               &#x2263; Spawn Swarm (Worktrees)
             </button>
             <button
               type="button"
               className="detail-action-btn"
-              onClick={() => onSpawnSwarm?.(node.tentacleId, "shared")}
+              onClick={() => handleSpawnSwarmClick("shared")}
             >
               &#x2263; Spawn Swarm (Normal)
             </button>
@@ -362,16 +399,21 @@ export const CanvasTentaclePanel = ({
                       />
                     </div>
                     {editingIndex === i ? (
-                      <input
+                      <textarea
                         className="detail-todo-edit-input"
-                        type="text"
+                        rows={1}
                         value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
+                        onChange={handleEditTextChange}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") void handleTodoEdit(i, editText);
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                            void handleTodoEdit(i, editText);
+                          }
                           if (e.key === "Escape") setEditingIndex(null);
                         }}
                         onBlur={() => void handleTodoEdit(i, editText)}
+                        ref={(element) => {
+                          if (element) autoGrowTextarea(element);
+                        }}
                       />
                     ) : (
                       <span
@@ -390,14 +432,16 @@ export const CanvasTentaclePanel = ({
             )}
             {addingTodo ? (
               <div className="detail-todo-add-row">
-                <input
+                <textarea
                   className="detail-todo-edit-input"
-                  type="text"
+                  rows={1}
                   placeholder="New todo item…"
                   value={addText}
-                  onChange={(e) => setAddText(e.target.value)}
+                  onChange={handleAddTextChange}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") void handleTodoAdd(addText);
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      void handleTodoAdd(addText);
+                    }
                     if (e.key === "Escape") {
                       setAddingTodo(false);
                       setAddText("");
@@ -410,6 +454,9 @@ export const CanvasTentaclePanel = ({
                       setAddingTodo(false);
                       setAddText("");
                     }
+                  }}
+                  ref={(element) => {
+                    if (element) autoGrowTextarea(element);
                   }}
                 />
               </div>

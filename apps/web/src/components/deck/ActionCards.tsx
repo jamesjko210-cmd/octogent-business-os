@@ -6,6 +6,14 @@ import { OctopusGlyph } from "../EmptyOctopus";
 export const AGENT_PROVIDER_OPTIONS: { value: TerminalAgentProvider; label: string }[] = [
   { value: "claude-code", label: "Claude Code" },
   { value: "codex", label: "Codex" },
+  { value: "gemini-cli", label: "Gemini CLI" },
+  { value: "perplexity", label: "Perplexity Research" },
+  { value: "notebooklm", label: "NotebookLM" },
+  { value: "lm-studio", label: "Qwen / LM Studio" },
+  { value: "notion", label: "Notion" },
+  { value: "stitch", label: "Google Stitch" },
+  { value: "antigravity", label: "Antigravity" },
+  { value: "custom", label: "Custom" },
 ];
 
 export type ActionCardsProps = {

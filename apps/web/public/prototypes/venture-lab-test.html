@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solo Builder Opportunity Radar</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07110f;
+        --card: rgba(245, 233, 196, 0.08);
+        --card-strong: rgba(245, 233, 196, 0.14);
+        --text: #f8efd3;
+        --muted: #aeb9a8;
+        --gold: #f0b84f;
+        --green: #87d37c;
+        --blue: #78b7ff;
+        --red: #f06b5f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(240, 184, 79, 0.18), transparent 28rem),
+          radial-gradient(circle at 80% 10%, rgba(120, 183, 255, 0.14), transparent 22rem),
+          linear-gradient(135deg, #020605, var(--bg));
+        color: var(--text);
+        font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 64px 0;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+        gap: 28px;
+        align-items: stretch;
+      }
+
+      .panel {
+        border: 1px solid rgba(248, 239, 211, 0.14);
+        border-radius: 28px;
+        background: linear-gradient(180deg, var(--card-strong), rgba(255, 255, 255, 0.03));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        padding: 30px;
+      }
+
+      .eyebrow {
+        color: var(--gold);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 16px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(3rem, 8vw, 6.8rem);
+        line-height: 0.88;
+        letter-spacing: -0.08em;
+      }
+
+      .lead {
+        max-width: 720px;
+        color: var(--muted);
+        font-size: clamp(1.08rem, 2vw, 1.35rem);
+        line-height: 1.55;
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        border: 1px solid rgba(248, 239, 211, 0.18);
+        border-radius: 999px;
+        background: var(--gold);
+        color: #151008;
+        font-weight: 900;
+        padding: 13px 18px;
+        text-decoration: none;
+      }
+
+      .button.secondary {
+        background: transparent;
+        color: var(--text);
+      }
+
+      .score {
+        display: grid;
+        min-height: 100%;
+        place-items: center;
+        text-align: center;
+      }
+
+      .score-number {
+        display: block;
+        color: var(--green);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 8rem;
+        line-height: 0.9;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .card {
+        border: 1px solid rgba(248, 239, 211, 0.12);
+        border-radius: 22px;
+        background: var(--card);
+        padding: 20px;
+      }
+
+      .card h2,
+      .card h3 {
+        margin: 0 0 10px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .wide {
+        grid-column: span 2;
+      }
+
+      .agent {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--gold);
+        box-shadow: 0 0 24px currentColor;
+      }
+
+      .dot.blue {
+        background: var(--blue);
+      }
+
+      .dot.green {
+        background: var(--green);
+      }
+
+      .dot.red {
+        background: var(--red);
+      }
+
+      @media (max-width: 860px) {
+        main {
+          padding: 32px 0;
+        }
+
+        .hero,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .wide {
+          grid-column: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="panel">
+          <div class="eyebrow">Venture Lab Test</div>
+          <h1>Find the business idea worth building next.</h1>
+          <p class="lead">
+            Solo Builder Opportunity Radar turns messy ideas into ranked opportunities:
+            market signals, Google ecosystem research, strategy synthesis, UI direction,
+            and implementation tasks in one agent team loop.
+          </p>
+          <div class="cta-row">
+            <a class="button" href="#output">Review sample output</a>
+            <a class="button secondary" href="#team">See agent roles</a>
+          </div>
+        </div>
+        <aside class="panel score" aria-label="Opportunity score">
+          <div>
+            <span class="score-number">87</span>
+            <strong>Opportunity score</strong>
+            <p class="lead">High fit for a first test because it needs research, planning, UI, and code without private data.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="grid" id="team" aria-label="AI team roles">
+        <article class="card">
+          <h2>Claude</h2>
+          <p>Plans the business logic, synthesizes tradeoffs, and turns messy notes into operating plans.</p>
+          <div class="agent"><span class="dot"></span><strong>Strategy brain</strong></div>
+        </article>
+        <article class="card">
+          <h2>Gemini</h2>
+          <p>Handles Google-family research: Trends, YouTube, Docs, Sheets, Drive, and search surfaces.</p>
+          <div class="agent"><span class="dot blue"></span><strong>Google brain</strong></div>
+        </article>
+        <article class="card">
+          <h2>Perplexity</h2>
+          <p>Checks live market signals, competitors, pricing pages, source-backed claims, and citations.</p>
+          <div class="agent"><span class="dot green"></span><strong>Research brain</strong></div>
+        </article>
+        <article class="card">
+          <h2>Codex</h2>
+          <p>Turns the chosen plan into files, tests, previewable artifacts, and production-ready code.</p>
+          <div class="agent"><span class="dot red"></span><strong>Execution brain</strong></div>
+        </article>
+
+        <article class="card wide" id="output">
+          <h3>First experiment</h3>
+          <p>
+            Interview 5 solo builders and ask them to paste 10 raw ideas. Measure whether ranked output helps them pick
+            one next experiment in under 15 minutes.
+          </p>
+        </article>
+        <article class="card wide">
+          <h3>Prototype direction</h3>
+          <p>
+            Start with a Notion-backed dashboard: idea inbox, research packets, opportunity score, decision log, and
+            implementation tasks handed to Codex.
+          </p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

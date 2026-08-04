@@ -5,4 +5,5 @@ export type ChannelMessage = {
   content: string;
   timestamp: string;
   delivered: boolean;
+  deliveredAt?: string;
 };

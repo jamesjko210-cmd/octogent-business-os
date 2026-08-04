@@ -4,7 +4,11 @@ import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 
-export const createShellEnvironment = (options?: { octogentSessionId?: string }) => {
+export const createShellEnvironment = (options?: {
+  octogentSessionId?: string;
+  octogentAgentId?: string;
+  octogentChannelCapability?: string;
+}) => {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (typeof value === "string") {
@@ -15,6 +19,12 @@ export const createShellEnvironment = (options?: { octogentSessionId?: string })
   env.COLORTERM = "truecolor";
   if (options?.octogentSessionId) {
     env.OCTOGENT_SESSION_ID = options.octogentSessionId;
+  }
+  if (options?.octogentAgentId) {
+    env.OCTOGENT_AGENT_ID = options.octogentAgentId;
+  }
+  if (options?.octogentChannelCapability) {
+    env.OCTOGENT_CHANNEL_CAPABILITY = options.octogentChannelCapability;
   }
   return env;
 };

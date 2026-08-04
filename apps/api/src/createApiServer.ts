@@ -1,4 +1,4 @@
-import { cpSync, existsSync as fsExistsSync, mkdirSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync as fsExistsSync, mkdirSync, readdirSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 
@@ -14,8 +14,11 @@ import { readCodexUsageSnapshot as readCodexUsageSnapshotDefault } from "./codex
 import { createApiRequestHandler } from "./createApiServer/requestHandler";
 import type { CreateApiServerOptions } from "./createApiServer/types";
 import { createUpgradeHandler } from "./createApiServer/upgradeHandler";
+import { readGithubPublishReadiness as readGithubPublishReadinessDefault } from "./githubPublishReadiness";
 import { readGithubRepoSummary as readGithubRepoSummaryDefault } from "./githubRepoSummary";
 import { createMonitorService } from "./monitor";
+import { resolveObsidianVaultPath } from "./obsidianVault";
+import { createTelegramBridge } from "./telegramBridge";
 import { createTerminalRuntime } from "./terminalRuntime";
 
 export const createApiServer = ({
@@ -30,8 +33,11 @@ export const createApiServer = ({
   readClaudeCliUsageSnapshot,
   readCodexUsageSnapshot = readCodexUsageSnapshotDefault,
   readGithubRepoSummary,
+  readGithubPublishReadiness,
   scanUsageHeatmap,
   monitorService,
+  telegramBridge,
+  obsidianVaultPath,
   invalidateClaudeUsageCache = invalidateUsageCacheDefault,
   allowRemoteAccess = false,
 }: CreateApiServerOptions = {}) => {
@@ -57,7 +63,7 @@ export const createApiServer = ({
     mkdirSync(resolvedCorePromptsDir, { recursive: true });
     for (const file of readdirSync(sourceDir)) {
       if (file.endsWith(".md")) {
-        cpSync(join(sourceDir, file), join(resolvedCorePromptsDir, file));
+        copyFileSync(join(sourceDir, file), join(resolvedCorePromptsDir, file));
       }
     }
   }
@@ -92,6 +98,12 @@ export const createApiServer = ({
       readGithubRepoSummaryDefault({
         cwd: resolvedWorkspaceCwd,
       }));
+  const readGithubPublishReadinessWithDefault =
+    readGithubPublishReadiness ??
+    (() =>
+      readGithubPublishReadinessDefault({
+        cwd: resolvedWorkspaceCwd,
+      }));
 
   const runtimeOptions: Parameters<typeof createTerminalRuntime>[0] = {
     workspaceCwd: resolvedWorkspaceCwd,
@@ -113,6 +125,8 @@ export const createApiServer = ({
     ((scope: "all" | "project") => scanClaudeUsageChart(scope, resolvedWorkspaceCwd));
 
   const codeIntelStore = createCodeIntelStore(resolvedStateDir);
+  const telegramBridgeWithDefault = telegramBridge ?? createTelegramBridge({ runtime });
+  const resolvedObsidianVaultPath = obsidianVaultPath ?? resolveObsidianVaultPath();
 
   const requestHandler = createApiRequestHandler({
     runtime,
@@ -128,10 +142,13 @@ export const createApiServer = ({
     readClaudeCliUsageSnapshot: readClaudeCliUsageSnapshotWithDefault,
     readCodexUsageSnapshot,
     readGithubRepoSummary: readGithubRepoSummaryWithDefault,
+    readGithubPublishReadiness: readGithubPublishReadinessWithDefault,
     scanUsageHeatmap: scanUsageHeatmapWithDefault,
     monitorService: monitorServiceWithDefault,
     invalidateClaudeUsageCache,
     codeIntelStore,
+    telegramBridge: telegramBridgeWithDefault,
+    obsidianVaultPath: resolvedObsidianVaultPath,
     allowRemoteAccess,
   });
 
@@ -156,10 +173,12 @@ export const createApiServer = ({
       const address = server.address();
       const resolvedPort = typeof address === "object" && address ? address.port : port;
       resolvedApiBaseUrl = `http://${host}:${resolvedPort}`;
+      telegramBridgeWithDefault.start();
 
       return { host, port: resolvedPort };
     },
     async stop() {
+      telegramBridgeWithDefault.stop();
       await runtime.close();
       await new Promise<void>((resolveStop, rejectStop) => {
         server.close((error) => {

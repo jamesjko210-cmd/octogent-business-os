@@ -5,6 +5,7 @@ import { logVerbose } from "../logging";
 import { parseClaudeTranscript } from "./claudeTranscript";
 import { storeClaudeTranscriptTurns } from "./conversations";
 import { broadcastMessage } from "./protocol";
+import type { AuditEventType } from "./security";
 import type { PersistedTerminal, TerminalSession } from "./types";
 
 const MAX_AUTO_NAME_LENGTH = 50;
@@ -28,11 +29,16 @@ export const createHookProcessor = (deps: {
   getApiBaseUrl: () => string;
   persistRegistry: () => void;
   deliverChannelMessages: (terminalId: string) => number;
+  deliverAgentInboxMessages: (terminalId: string) => number;
   releaseSessionKeepAlive: (terminalId: string) => boolean;
   onStateChange?: (
     terminalId: string,
     state: TerminalSession["agentState"],
     toolName?: string,
+  ) => void;
+  appendAuditEvent?: (
+    eventType: AuditEventType,
+    options: { terminalId?: string; payload?: Record<string, unknown> },
   ) => void;
 }) => {
   const {
@@ -42,8 +48,10 @@ export const createHookProcessor = (deps: {
     getApiBaseUrl,
     persistRegistry,
     deliverChannelMessages,
+    deliverAgentInboxMessages,
     releaseSessionKeepAlive,
     onStateChange,
+    appendAuditEvent,
   } = deps;
 
   const parseSettingsObject = (fileContents: string): Record<string, unknown> | null => {
@@ -208,6 +216,13 @@ export const createHookProcessor = (deps: {
     logVerbose(
       `[Hook] Received hook: ${hookName} octogentSession=${octogentSessionId ?? "(none)"}`,
     );
+    appendAuditEvent?.("hook.received", {
+      ...(octogentSessionId ? { terminalId: octogentSessionId } : {}),
+      payload: {
+        hookName,
+        payload,
+      },
+    });
 
     if (!payload || typeof payload !== "object") {
       return { ok: true };
@@ -247,8 +262,9 @@ export const createHookProcessor = (deps: {
         onStateChange?.(octogentSessionId, "idle");
         broadcastMessage(session, { type: "state", state: "idle" });
 
-        // Deliver any queued channel messages now that the agent is idle.
+        // Deliver queued messages only after the agent reaches an idle prompt.
         deliverChannelMessages(octogentSessionId);
+        deliverAgentInboxMessages(octogentSessionId);
       }
 
       return { ok: true };
@@ -258,15 +274,26 @@ export const createHookProcessor = (deps: {
       if (!octogentSessionId) {
         return { ok: true };
       }
-      const session = sessions.get(octogentSessionId);
-      if (!session) {
-        return { ok: true };
-      }
 
       const toolName =
         typeof hookPayloadRecord.tool_name === "string" ? hookPayloadRecord.tool_name : null;
 
       logVerbose(`[Hook] pre-tool-use: tool=${toolName} session=${octogentSessionId}`);
+
+      if (toolName) {
+        appendAuditEvent?.("tool.pre_use", {
+          terminalId: octogentSessionId,
+          payload: {
+            toolName,
+            payload,
+          },
+        });
+      }
+
+      const session = sessions.get(octogentSessionId);
+      if (!session) {
+        return { ok: true };
+      }
 
       if (toolName) {
         session.lastToolName = toolName;
@@ -291,6 +318,13 @@ export const createHookProcessor = (deps: {
       if (!terminal) {
         return { ok: true };
       }
+      appendAuditEvent?.("query.user_prompt", {
+        terminalId: octogentSessionId,
+        payload: {
+          prompt: typeof hookPayloadRecord.prompt === "string" ? hookPayloadRecord.prompt : "",
+          payload,
+        },
+      });
 
       // Update last-active timestamp (determines active/inactive on the canvas).
       terminal.lastActiveAt = new Date().toISOString();

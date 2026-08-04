@@ -26,6 +26,12 @@ Before writing any code, read `CONTEXT.md` and any other `.md` files in that fol
 {{commitGuidance}}
 {{parentSection}}
 
+{{autonomousSkillsSection}}
+
+{{goalRuntimeSection}}
+
+{{runtimePolicySection}}
+
 ## Definition of Done
 
 You are done when ALL of these are true:

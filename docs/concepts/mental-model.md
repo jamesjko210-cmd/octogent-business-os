@@ -22,7 +22,7 @@ flowchart TD
 - a **terminal** is the runtime record plus, when active, one PTY-backed agent session
 - a **worker** is a terminal assigned to one narrower task, usually a todo item
 - a **parent** is a terminal that coordinates workers and performs final review or merge work
-- a **channel** is an in-memory queue used to inject short messages into live terminals
+- a **channel** is a durable per-terminal queue used to inject short messages into live terminals
 
 ## Tentacle vs terminal
 
@@ -76,7 +76,7 @@ The runtime owns:
 - transcripts
 - message delivery state
 
-That data helps the app run, but it is not the same thing as the durable job context. Terminal records survive API restarts. PTY sessions, WebSocket clients, and channel queues do not.
+That data helps the app run, but it is not the same thing as the durable job context. Terminal records and channel delivery state survive API restarts; PTY sessions and WebSocket clients do not.
 
 On startup, Octogent reloads terminal records from `tentacles.json`. If a record says it was running, Octogent cannot reattach to the old in-memory PTY, so the record is reconciled to `stale` with a lifecycle reason.
 

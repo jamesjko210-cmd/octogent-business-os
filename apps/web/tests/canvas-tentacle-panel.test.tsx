@@ -23,6 +23,7 @@ const tentacle = {
     { text: "Audit docs", done: false },
     { text: "Consolidate principles", done: false },
   ],
+  researchWorkflow: null,
   suggestedSkills: ["docs-writer", "release-helper"],
 };
 

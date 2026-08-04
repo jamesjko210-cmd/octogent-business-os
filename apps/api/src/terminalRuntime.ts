@@ -6,6 +6,7 @@ import type { TerminalSnapshot } from "@octogent/core";
 import type { WebSocket } from "ws";
 import { WebSocketServer } from "ws";
 
+import { createAgentInboxMessaging } from "./terminalRuntime/agentInboxMessaging";
 import { createChannelMessaging } from "./terminalRuntime/channelMessaging";
 import {
   DEFAULT_AGENT_PROVIDER,
@@ -23,11 +24,19 @@ import {
 } from "./terminalRuntime/conversations";
 import { createGitOperations } from "./terminalRuntime/gitOperations";
 import { createHookProcessor } from "./terminalRuntime/hookProcessor";
+import { createOperatorUpdates } from "./terminalRuntime/operatorUpdates";
 import {
   createTerminalRegistryPersistence,
   loadTerminalRegistry,
   pruneUiStateTerminalReferences,
 } from "./terminalRuntime/registry";
+import {
+  type AuditEventType,
+  createAuditLog,
+  createTerminalSecurity,
+  hasTerminalChannelCapability,
+  publicAgentIdentity,
+} from "./terminalRuntime/security";
 import { createSessionRuntime } from "./terminalRuntime/sessionRuntime";
 import { createDefaultGitClient } from "./terminalRuntime/systemClients";
 import type { DirectSessionListener } from "./terminalRuntime/types";
@@ -78,6 +87,7 @@ export const createTerminalRuntime = ({
   const isDebugPtyLogsEnabled = process.env.OCTOGENT_DEBUG_PTY_LOGS === "1";
   const ptyLogDir = process.env.OCTOGENT_DEBUG_PTY_LOG_DIR ?? join(stateDir, "logs");
   const transcriptDirectoryPath = join(stateDir, "state", "transcripts");
+  const auditLog = createAuditLog(stateDir, terminals);
   const configuredMaxConcurrentSessions = (() => {
     if (maxConcurrentSessions !== undefined) {
       return maxConcurrentSessions;
@@ -100,6 +110,35 @@ export const createTerminalRuntime = ({
       uiState,
     });
   };
+  const ensureTerminalSecurity = () => {
+    let didAssignSecurity = false;
+    for (const terminal of terminals.values()) {
+      if (terminal.security) {
+        continue;
+      }
+
+      terminal.security = createTerminalSecurity({
+        terminalId: terminal.terminalId,
+        tentacleId: terminal.tentacleId,
+        ...(terminal.worktreeId ? { worktreeId: terminal.worktreeId } : {}),
+        workspaceMode: terminal.workspaceMode,
+        agentProvider: terminal.agentProvider ?? DEFAULT_AGENT_PROVIDER,
+      });
+      didAssignSecurity = true;
+      auditLog.appendAuditEvent("terminal.identity_assigned", {
+        terminalId: terminal.terminalId,
+        payload: {
+          tentacleId: terminal.tentacleId,
+          workspaceMode: terminal.workspaceMode,
+          accessScope: terminal.security.accessScope,
+        },
+      });
+    }
+
+    if (didAssignSecurity) {
+      persistRegistry();
+    }
+  };
 
   const isProcessAlive = (pid: number | undefined): boolean => {
     if (!pid || !Number.isInteger(pid) || pid <= 0) {
@@ -118,13 +157,15 @@ export const createTerminalRuntime = ({
     lifecycleState: TerminalLifecycleState,
   ): TerminalSnapshot["state"] => {
     switch (lifecycleState) {
+      case "registered":
+        return "idle";
       case "stale":
         return "stale";
       case "exited":
         return "exited";
       case "stopped":
         return "stopped";
-      default:
+      case "running":
         return "live";
     }
   };
@@ -151,10 +192,18 @@ export const createTerminalRuntime = ({
       terminal.processId = undefined;
     }
     persistRegistry();
+    auditLog.appendAuditEvent("session.started", {
+      terminalId,
+      payload: { processId, startedAt },
+    });
     broadcastTerminalEvent({
       type: "terminal-updated",
       snapshot: toTerminalSnapshot(terminal),
     });
+    // The session map is populated just after this callback. Queue delivery one turn later.
+    setTimeout(() => {
+      agentInboxMessaging.deliverAgentInboxMessages(terminalId);
+    }, 0);
   };
 
   const markTerminalEnded = (terminalId: string, details: TerminalSessionEndDetails) => {
@@ -179,6 +228,10 @@ export const createTerminalRuntime = ({
       terminal.exitSignal = undefined;
     }
     persistRegistry();
+    auditLog.appendAuditEvent("session.ended", {
+      terminalId,
+      payload: details,
+    });
     broadcastTerminalEvent({
       type: "terminal-updated",
       snapshot: toTerminalSnapshot(terminal),
@@ -250,9 +303,15 @@ export const createTerminalRuntime = ({
     ptyLogDir,
     transcriptDirectoryPath,
     maxConcurrentSessions: configuredMaxConcurrentSessions,
-    onStateChange: broadcastTerminalStateChanged,
+    onStateChange: (terminalId, state, toolName) => {
+      broadcastTerminalStateChanged(terminalId, state, toolName);
+      if (state === "idle") {
+        agentInboxMessaging.deliverAgentInboxMessages(terminalId);
+      }
+    },
     onSessionStart: markTerminalRunning,
     onSessionEnd: markTerminalEnded,
+    appendAuditEvent: auditLog.appendAuditEvent,
   });
 
   const gitOps = createGitOperations({
@@ -262,9 +321,24 @@ export const createTerminalRuntime = ({
   });
 
   const channelMessaging = createChannelMessaging({
+    stateDir,
     terminals,
     sessions,
     writeInput: (terminalId: string, data: string) => sessionRuntime.writeInput(terminalId, data),
+    appendAuditEvent: auditLog.appendAuditEvent,
+  });
+
+  const agentInboxMessaging = createAgentInboxMessaging({
+    stateDir,
+    terminals,
+    sessions,
+    writeInput: (terminalId: string, data: string) => sessionRuntime.writeInput(terminalId, data),
+    appendAuditEvent: auditLog.appendAuditEvent,
+  });
+
+  const operatorUpdates = createOperatorUpdates({
+    stateDir,
+    appendAuditEvent: auditLog.appendAuditEvent,
   });
 
   const hookProcessor = createHookProcessor({
@@ -274,11 +348,14 @@ export const createTerminalRuntime = ({
     getApiBaseUrl,
     persistRegistry,
     deliverChannelMessages: channelMessaging.deliverChannelMessages,
+    deliverAgentInboxMessages: agentInboxMessaging.deliverAgentInboxMessages,
     releaseSessionKeepAlive: sessionRuntime.releaseSessionKeepAlive,
     onStateChange: broadcastTerminalStateChanged,
+    appendAuditEvent: auditLog.appendAuditEvent,
   });
 
   reconcilePersistedLifecycle();
+  ensureTerminalSecurity();
 
   const allocateTerminalId = () => {
     let candidateNumber = 1;
@@ -331,11 +408,13 @@ export const createTerminalRuntime = ({
       : (terminal.lifecycleState ?? "registered");
     return {
       terminalId: terminal.terminalId,
+      ...(terminal.agentId ? { agentId: terminal.agentId } : {}),
       label: terminal.terminalId,
       state: lifecycleStateToAgentState(lifecycleState),
       tentacleId: terminal.tentacleId,
       tentacleName: terminal.tentacleName,
       workspaceMode: terminal.workspaceMode,
+      agentProvider: terminal.agentProvider ?? DEFAULT_AGENT_PROVIDER,
       createdAt: terminal.createdAt,
       hasUserPrompt: isTerminalRecentlyActive(terminal),
       ...(terminal.parentTerminalId ? { parentTerminalId: terminal.parentTerminalId } : {}),
@@ -348,6 +427,12 @@ export const createTerminalRuntime = ({
       ...(terminal.endedAt ? { endedAt: terminal.endedAt } : {}),
       ...(terminal.exitCode !== undefined ? { exitCode: terminal.exitCode } : {}),
       ...(terminal.exitSignal !== undefined ? { exitSignal: terminal.exitSignal } : {}),
+      ...(terminal.security
+        ? {
+            agentIdentity: publicAgentIdentity(terminal.security.identity),
+            accessScope: terminal.security.accessScope,
+          }
+        : {}),
     };
   };
 
@@ -388,6 +473,7 @@ export const createTerminalRuntime = ({
 
   const createTerminal = ({
     terminalId: requestedTerminalId,
+    agentId,
     tentacleId: requestedTentacleId,
     worktreeId: requestedWorktreeId,
     tentacleName,
@@ -401,6 +487,7 @@ export const createTerminalRuntime = ({
     autoRenamePromptContext,
   }: {
     terminalId?: string;
+    agentId?: string;
     tentacleId?: string;
     worktreeId?: string;
     tentacleName?: string;
@@ -450,6 +537,7 @@ export const createTerminalRuntime = ({
 
     const terminal: PersistedTerminal = {
       terminalId,
+      ...(agentId ? { agentId } : {}),
       tentacleId,
       ...(worktreeId ? { worktreeId } : {}),
       tentacleName: effectiveName,
@@ -465,6 +553,13 @@ export const createTerminalRuntime = ({
       ...(initialPrompt ? { lastActiveAt: new Date().toISOString() } : {}),
       ...(parentTerminalId ? { parentTerminalId } : {}),
     };
+    terminal.security = createTerminalSecurity({
+      terminalId,
+      tentacleId,
+      ...(worktreeId ? { worktreeId } : {}),
+      workspaceMode,
+      agentProvider: terminal.agentProvider ?? DEFAULT_AGENT_PROVIDER,
+    });
 
     const effectiveWorktreeId = worktreeId ?? tentacleId;
     const shouldCreateWorktree = workspaceMode === "worktree";
@@ -486,6 +581,17 @@ export const createTerminalRuntime = ({
 
     terminals.set(terminalId, terminal);
     persistRegistry();
+    auditLog.appendAuditEvent("terminal.created", {
+      terminalId,
+      payload: {
+        tentacleId,
+        ...(agentId ? { agentId } : {}),
+        tentacleName: effectiveName,
+        workspaceMode,
+        agentProvider: terminal.agentProvider,
+        accessScope: terminal.security.accessScope,
+      },
+    });
     broadcastTerminalEvent({
       type: "terminal-created",
       snapshot: toTerminalSnapshot(terminal),
@@ -558,6 +664,17 @@ export const createTerminalRuntime = ({
       return searchConversations(transcriptDirectoryPath, query);
     },
 
+    listAuditEvents(terminalId?: string) {
+      return auditLog.listAuditEvents(terminalId);
+    },
+
+    appendAuditEvent(
+      eventType: AuditEventType,
+      options: { terminalId?: string; payload?: Record<string, unknown> } = {},
+    ) {
+      return auditLog.appendAuditEvent(eventType, options);
+    },
+
     readUiState,
 
     patchUiState(patch: PersistedUiState): PersistedUiState {
@@ -621,6 +738,20 @@ export const createTerminalRuntime = ({
 
     createTerminal,
 
+    startTerminal(terminalId: string): { snapshot: TerminalSnapshot; started: boolean } | null {
+      const terminal = terminals.get(terminalId);
+      if (!terminal) {
+        return null;
+      }
+
+      if (terminal.lifecycleState !== "registered") {
+        return { snapshot: toTerminalSnapshot(terminal), started: false };
+      }
+
+      const started = sessionRuntime.startSession(terminalId);
+      return { snapshot: toTerminalSnapshot(terminal), started };
+    },
+
     renameTerminal(terminalId: string, tentacleName: string): TerminalSnapshot | null {
       const terminal = terminals.get(terminalId);
       if (!terminal) {
@@ -631,6 +762,10 @@ export const createTerminalRuntime = ({
       terminal.nameOrigin = "user";
       terminal.autoRenamePromptContext = undefined;
       persistRegistry();
+      auditLog.appendAuditEvent("terminal.renamed", {
+        terminalId,
+        payload: { tentacleName },
+      });
       broadcastTerminalEvent({
         type: "terminal-updated",
         snapshot: toTerminalSnapshot(terminal),
@@ -659,6 +794,10 @@ export const createTerminalRuntime = ({
           endedAt: new Date().toISOString(),
         });
       }
+      auditLog.appendAuditEvent("terminal.stopped", {
+        terminalId,
+        payload: { stoppedActiveSession },
+      });
 
       return toTerminalSnapshot(terminal);
     },
@@ -686,6 +825,10 @@ export const createTerminalRuntime = ({
           endedAt: new Date().toISOString(),
         });
       }
+      auditLog.appendAuditEvent("terminal.killed", {
+        terminalId,
+        payload: { killedActiveSession, signal },
+      });
 
       return toTerminalSnapshot(terminal);
     },
@@ -741,6 +884,13 @@ export const createTerminalRuntime = ({
           );
         }
         terminals.delete(cascadeTerminalId);
+        auditLog.appendAuditEvent("terminal.deleted", {
+          terminalId: cascadeTerminalId,
+          payload: {
+            rootTerminalId: terminalId,
+            cascade: cascadeTerminalId !== terminalId,
+          },
+        });
       }
 
       persistRegistry();
@@ -754,6 +904,14 @@ export const createTerminalRuntime = ({
     },
 
     ...channelMessaging,
+    verifyTerminalChannelSender(terminalId: string, capability: string): boolean {
+      const terminal = terminals.get(terminalId);
+      return Boolean(
+        terminal && sessions.has(terminalId) && hasTerminalChannelCapability(terminal, capability),
+      );
+    },
+    ...agentInboxMessaging,
+    ...operatorUpdates,
 
     handleHook: hookProcessor.handleHook,
 

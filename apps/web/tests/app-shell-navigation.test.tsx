@@ -50,6 +50,10 @@ const mockShellRequests = () => {
       return jsonResponse({});
     }
 
+    if (url.endsWith("/api/workflows") && method === "GET") {
+      return jsonResponse({ workflows: [], runs: [] });
+    }
+
     return notFoundResponse();
   });
 };
@@ -70,10 +74,10 @@ describe("App shell and navigation", () => {
     expect(screen.getByLabelText("Main content canvas")).toBeInTheDocument();
     expect(screen.getByLabelText("Telemetry ticker tape")).toBeInTheDocument();
     expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
-    expect(screen.getByText("Press 1-8 to navigate")).toBeInTheDocument();
+    expect(screen.getByText("Press 1-9 to navigate")).toBeInTheDocument();
   });
 
-  it("supports keyboard-first primary navigation with number keys 1-8", async () => {
+  it("supports keyboard-first primary navigation with number keys 1-9", async () => {
     mockShellRequests();
 
     render(<App />);
@@ -88,6 +92,21 @@ describe("App shell and navigation", () => {
     ).toHaveAttribute("aria-current", "page");
   });
 
+  it("opens the full-width Workflow Registry from navigation", async () => {
+    mockShellRequests();
+
+    render(<App />);
+    await screen.findByRole("navigation", { name: "Primary navigation" });
+
+    fireEvent.click(screen.getByRole("button", { name: "[9] Workflows" }));
+
+    expect(await screen.findByLabelText("Workflow registry")).toBeInTheDocument();
+    expect(
+      screen.getByText("Persistent work, clear ownership, visible control."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Active Agents sidebar")).not.toBeInTheDocument();
+  });
+
   it("renders settings panel when navigating to settings tab", async () => {
     mockShellRequests();
 
@@ -96,7 +115,7 @@ describe("App shell and navigation", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "[8] Settings",
+        name: "[8] Systems",
       }),
     );
 

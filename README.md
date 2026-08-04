@@ -4,21 +4,32 @@
 <br/>
 <br/>
 
-<strong>too many terminals, not enough tentacles</strong>
+<strong>local orchestration for a real project, with evidence before automation</strong>
 <br />
 <br />
 
-![Last Update](https://img.shields.io/github/last-commit/hesamsheikh/octogent?label=Last%20Update&style=flat-square)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-5FA04E?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Follow on X](https://img.shields.io/badge/Follow%20on-X-000000?style=flat-square&logo=x)](https://x.com/Hesamation)
-[![Discord](https://img.shields.io/badge/Discord-Open%20Source%20AI%20Builders-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/vtJykN3t)
+[![Local-first](https://img.shields.io/badge/Runtime-local--first-202938?style=flat-square)](#this-projects-operating-profile)
+[![Publish policy](https://img.shields.io/badge/Publishing-human--approved-B78B2E?style=flat-square)](docs/guides/user-owned-github-publication.md)
 
 </div>
 
-# Octogent
+# Octogent Business OS
 
-It's really not fun to have **ten Claude Code sessions open at once**, constantly switching between them and trying to remember what each one was supposed to do. *Things get blurry fast* when one agent is doing documentation, another is touching the database, another is changing the API, and another is somewhere in the frontend. **Octogent** tries to fix that by giving each job its own <u>scoped context, notes, and task list</u>, while also making it possible for Claude Code to **spawn other Claude Code agents**, assign them work, and communicate with them.
+This customized local workspace uses Octogent as the management layer around Block Bounce and future project swarms. It keeps scoped contexts, role responsibilities, workflows, approvals, audit history, shared memory, and safe handoffs in one local system. It does not claim that a named model is connected until a matching local terminal proves it, and it does not publish work until the operator reviews a user-owned destination.
+
+## This Project's Operating Profile
+
+This local Octogent project is an **Agentic OS management harness** for Block Bounce, a web-first game, and future independent project swarms. It is not the game itself. It gives the operator one place to see project lanes, permanent agent roles, live terminal activity, workflows, messages, memory, policy checks, and recorded outcomes.
+
+The current operating team includes strategy, execution, debugging, research, marketing, player feedback, automation, finance, market analysis, records, and UI/UX roles. Each role explains its purpose and when it should be launched. Runtime status remains evidence-based: a role is not shown as working until a matching terminal exists and reports activity.
+
+Block Bounce is the first verified local workflow: a scoped Codex worker can claim the Game QA run only when policy and terminal scope match, then run two fixed regression suites and store the redacted outcome. It cannot execute arbitrary commands or external actions. Other swarms can use the same structure without sharing their context or worktrees.
+
+## Upstream Attribution
+
+This workspace is a local customization of [hesamsheikh/octogent](https://github.com/hesamsheikh/octogent). The original upstream remains protected and is not a publishing target for this project. Before this customized system is published, create a user-owned repository and follow the [safe publication checklist](docs/guides/user-owned-github-publication.md).
 
 ## The Vision
 
@@ -50,8 +61,11 @@ This repo is a personal exploration of what an AI coding environment might look 
 - **Runs multiple Claude Code terminals** so one developer can coordinate several coding sessions at once
 - **Spawns child agents from todo items** so parallel work has a concrete source of truth
 - **Supports inter-agent messaging** so workers and coordinators can report completion, blockers, and handoff notes
+- **Defines agent manifests** so providers, roles, scopes, auth mode, memory behavior, and policies are inspectable before launch
 - **Keeps agent-facing context in files** so the system is more durable than a single prompt thread
 - **Provides a local API and UI** for terminal lifecycle, persistence, websocket transport, and orchestration
+- **Shows permanent agent roles separately from temporary workers** so the dashboard stays readable as one-off tasks finish
+- **Uses shared project memory and the configured Obsidian vault** for verified decisions, handoffs, and session history
 
 A **tentacle** is a folder under `.octogent/tentacles/<tentacle-id>/` that holds agent-readable markdown such as `CONTEXT.md`, `todo.md`, and any extra notes needed for that slice of the codebase.
 
@@ -150,12 +164,12 @@ On first run, **Octogent** creates the local `.octogent/` scaffold automatically
 ## Requirements
 
 - Node.js `22+`
-- `claude` installed for the supported agent workflow
+- at least one supported agent CLI or workflow command: `claude`, `codex`, `gemini`, `pplx`, `lms`, `antigravity`, or an `OCTOGENT_*_COMMAND` override
 - `git` for worktree terminals
 - `gh` for GitHub pull request features
 - `curl` for the current Claude hook callback flow
 
-Startup fails if neither `claude` nor another supported provider binary is installed. The current docs only cover **Claude Code**.
+Claude Code remains the default provider, but terminals can also use Codex, Gemini CLI, Perplexity Research, Qwen/LM Studio, Notion, Google Stitch, Antigravity, or a custom command provider. Research swarms route each prompt to Claude, Gemini, or Perplexity when no provider is explicitly selected. Set `OCTOGENT_GEMINI_COMMAND`, `OCTOGENT_PERPLEXITY_COMMAND`, `OCTOGENT_LM_STUDIO_COMMAND`, `OCTOGENT_NOTION_COMMAND`, `OCTOGENT_STITCH_COMMAND`, `OCTOGENT_ANTIGRAVITY_COMMAND`, or `OCTOGENT_CUSTOM_AGENT_COMMAND` when your local command differs from the defaults.
 
 ## What persists
 
@@ -176,6 +190,7 @@ PTY sessions survive browser reloads during the idle grace period, but they do *
 - [Working With Todos](docs/guides/working-with-todos.md)
 - [Orchestrating Child Agents](docs/guides/orchestrating-child-agents.md)
 - [Inter-Agent Messaging](docs/guides/inter-agent-messaging.md)
+- [Agent Manifests](docs/guides/agent-manifests.md)
 - [CLI Reference](docs/reference/cli.md)
 - [Filesystem Layout](docs/reference/filesystem-layout.md)
 - [API Reference](docs/reference/api.md)

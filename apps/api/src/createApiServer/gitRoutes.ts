@@ -7,6 +7,30 @@ import {
 import type { ApiRouteHandler } from "./routeHelpers";
 import { readJsonBodyOrWriteError, writeJson, writeMethodNotAllowed } from "./routeHelpers";
 
+const requiresApprovedRemote = async (
+  readGithubPublishReadiness: Parameters<ApiRouteHandler>[1]["readGithubPublishReadiness"],
+  response: Parameters<ApiRouteHandler>[0]["response"],
+  corsOrigin: Parameters<ApiRouteHandler>[0]["corsOrigin"],
+) => {
+  try {
+    const readiness = await readGithubPublishReadiness();
+    if (readiness.status === "ready") {
+      return false;
+    }
+
+    writeJson(response, 403, { error: readiness.message }, corsOrigin);
+    return true;
+  } catch {
+    writeJson(
+      response,
+      503,
+      { error: "Unable to verify the Git remote. Remote Git actions are blocked." },
+      corsOrigin,
+    );
+    return true;
+  }
+};
+
 const TENTACLE_GIT_ACTION_PATH_PATTERN =
   /^\/api\/tentacles\/([^/]+)\/git\/(status|commit|push|sync)$/;
 const TENTACLE_GIT_PULL_REQUEST_PATH_PATTERN = /^\/api\/tentacles\/([^/]+)\/git\/pr$/;
@@ -14,7 +38,7 @@ const TENTACLE_GIT_PULL_REQUEST_MERGE_PATH_PATTERN = /^\/api\/tentacles\/([^/]+)
 
 export const handleTentacleGitRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
-  { runtime },
+  { runtime, readGithubPublishReadiness },
 ) => {
   const gitMatch = requestUrl.pathname.match(TENTACLE_GIT_ACTION_PATH_PATTERN);
   if (!gitMatch) {
@@ -79,6 +103,10 @@ export const handleTentacleGitRoute: ApiRouteHandler = async (
         return true;
       }
 
+      if (await requiresApprovedRemote(readGithubPublishReadiness, response, corsOrigin)) {
+        return true;
+      }
+
       const payload = runtime.pushTentacleWorktree(tentacleId);
       if (!payload) {
         writeJson(response, 404, { error: "Tentacle not found." }, corsOrigin);
@@ -105,6 +133,10 @@ export const handleTentacleGitRoute: ApiRouteHandler = async (
       return true;
     }
 
+    if (await requiresApprovedRemote(readGithubPublishReadiness, response, corsOrigin)) {
+      return true;
+    }
+
     const payload = runtime.syncTentacleWorktree(tentacleId, baseRefResult.baseRef ?? undefined);
     if (!payload) {
       writeJson(response, 404, { error: "Tentacle not found." }, corsOrigin);
@@ -124,7 +156,7 @@ export const handleTentacleGitRoute: ApiRouteHandler = async (
 
 export const handleTentacleGitPullRequestRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
-  { runtime },
+  { runtime, readGithubPublishReadiness },
 ) => {
   const mergeMatch = requestUrl.pathname.match(TENTACLE_GIT_PULL_REQUEST_MERGE_PATH_PATTERN);
   if (mergeMatch) {
@@ -135,6 +167,10 @@ export const handleTentacleGitPullRequestRoute: ApiRouteHandler = async (
 
     const tentacleId = decodeURIComponent(mergeMatch[1] ?? "");
     try {
+      if (await requiresApprovedRemote(readGithubPublishReadiness, response, corsOrigin)) {
+        return true;
+      }
+
       const payload = runtime.mergeTentaclePullRequest(tentacleId);
       if (!payload) {
         writeJson(response, 404, { error: "Tentacle not found." }, corsOrigin);
@@ -189,6 +225,10 @@ export const handleTentacleGitPullRequestRoute: ApiRouteHandler = async (
         { error: pullRequestInput.error ?? "Pull request title cannot be empty." },
         corsOrigin,
       );
+      return true;
+    }
+
+    if (await requiresApprovedRemote(readGithubPublishReadiness, response, corsOrigin)) {
       return true;
     }
 

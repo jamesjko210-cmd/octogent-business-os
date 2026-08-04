@@ -26,8 +26,11 @@ const parseHostname = (value: string, withScheme: boolean): string | null => {
   }
 };
 
-export const isAllowedOriginHeader = (origin: string | undefined, allowRemoteAccess: boolean) => {
-  if (allowRemoteAccess || origin === undefined) {
+// Remote control is intentionally disabled until this local runtime has an
+// authenticated transport. The legacy flag must not turn the management plane
+// into an unauthenticated network service.
+export const isAllowedOriginHeader = (origin: string | undefined, _allowRemoteAccess: boolean) => {
+  if (origin === undefined) {
     return true;
   }
 
@@ -35,11 +38,7 @@ export const isAllowedOriginHeader = (origin: string | undefined, allowRemoteAcc
   return hostname !== null && isLoopbackHostname(hostname);
 };
 
-export const isAllowedHostHeader = (host: string | undefined, allowRemoteAccess: boolean) => {
-  if (allowRemoteAccess) {
-    return true;
-  }
-
+export const isAllowedHostHeader = (host: string | undefined, _allowRemoteAccess: boolean) => {
   if (!host) {
     return false;
   }
@@ -62,7 +61,7 @@ export const getRequestCorsOrigin = (origin: string | undefined, allowRemoteAcce
     return null;
   }
 
-  if (!allowRemoteAccess && !isAllowedOriginHeader(origin, allowRemoteAccess)) {
+  if (!isAllowedOriginHeader(origin, allowRemoteAccess)) {
     return null;
   }
 

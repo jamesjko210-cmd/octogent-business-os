@@ -29,5 +29,14 @@ export type DeckTentacleSummary = {
   todoTotal: number;
   todoDone: number;
   todoItems: { text: string; done: boolean }[];
+  researchWorkflow: {
+    stage: "scout" | "source-review" | "memory" | "strategy" | "execution" | "complete";
+    stages: Array<{
+      id: "scout" | "source-review" | "memory" | "strategy" | "execution";
+      label: string;
+      done: boolean;
+      active: boolean;
+    }>;
+  } | null;
   suggestedSkills: string[];
 };

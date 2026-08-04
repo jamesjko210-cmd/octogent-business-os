@@ -20,6 +20,11 @@ export type {
   ConversationSessionSummary,
   ConversationSessionDetail,
   ConversationSearchHit,
+  ChannelMessage,
+  Workflow,
+  WorkflowRun,
+  WorkflowAutomationLevel,
+  WorkflowStatus,
 } from "@octogent/core";
 
 export type { PersistedUiState as FrontendUiStateSnapshot } from "@octogent/core";

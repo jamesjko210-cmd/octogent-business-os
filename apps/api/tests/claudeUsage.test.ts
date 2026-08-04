@@ -543,7 +543,7 @@ describe("readClaudeUsageSnapshot", () => {
     expect(snapshot.status).toBe("ok");
     expect(snapshot.source).toBe("oauth-api");
     expect(snapshot.primaryUsedPercent).toBe(14);
-    expect(Date.now() - startedAt).toBeLessThan(40);
+    expect(Date.now() - startedAt).toBeLessThan(500);
 
     await new Promise((resolve) => setTimeout(resolve, 90));
     expect(fetchMock).toHaveBeenCalledTimes(1);

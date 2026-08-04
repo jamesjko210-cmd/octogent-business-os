@@ -7,9 +7,17 @@ import type { UsageChartResponse } from "../claudeSessionScanner";
 import type { ClaudeUsageSnapshot } from "../claudeUsage";
 import type { CodeIntelStore } from "../codeIntelStore";
 import type { CodexUsageSnapshot } from "../codexUsage";
+import type { GitHubPublishReadiness } from "../githubPublishReadiness";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
+import type { TelegramBridge } from "../telegramBridge";
+import { handleAgentActivityRoute } from "./agentActivityRoutes";
+import { handleAgentInboxRoute } from "./agentInboxRoutes";
+import { handleAgentManifestEvaluateRoute, handleAgentManifestsRoute } from "./agentManifestRoutes";
+import { handleAgentObsidianRoute } from "./agentObsidianRoutes";
+import { handleAgentRosterRoute } from "./agentRosterRoutes";
+import { handleAutonomousSkillsRoute } from "./autonomousSkillRoutes";
 import { handleCodeIntelEventsRoute } from "./codeIntelRoutes";
 import {
   handleConversationExportRoute,
@@ -31,6 +39,9 @@ import {
   handleDeckVaultFileRoute,
 } from "./deckRoutes";
 import { handleTentacleGitPullRequestRoute, handleTentacleGitRoute } from "./gitRoutes";
+import { handleGoalItemRoute, handleGoalsRoute } from "./goalRoutes";
+import { handleLocalWorkflowExecutionRoute } from "./localWorkflowExecutionRoutes";
+import { handleMemoryRoute } from "./memoryRoutes";
 import {
   handleChannelMessagesRoute,
   handleHookRoute,
@@ -44,6 +55,7 @@ import {
   handleMonitorFeedRoute,
   handleMonitorRefreshRoute,
 } from "./monitorRoutes";
+import { handleOperatorUpdatesRoute } from "./operatorUpdateRoutes";
 import type {
   ApiRouteHandler,
   RouteHandlerContext,
@@ -52,13 +64,22 @@ import type {
 } from "./routeHelpers";
 import { writeJson, writeNoContent } from "./routeHelpers";
 import {
+  handleRuntimePoliciesRoute,
+  handleRuntimePolicyEvaluateRoute,
+} from "./runtimePolicyRoutes";
+import {
   getRequestCorsOrigin,
   isAllowedHostHeader,
   isAllowedOriginHeader,
   readHeaderValue,
 } from "./security";
+import { handleSessionHistoryRoute } from "./sessionHistoryRoutes";
+import { handleSwarmRegistryRoute } from "./swarmRegistryRoutes";
+import { handleTelegramStatusRoute } from "./telegramRoutes";
 import {
+  handleAuditLogRoute,
   handleTerminalActionRoute,
+  handleTerminalAuditRoute,
   handleTerminalItemRoute,
   handleTerminalPruneRoute,
   handleTerminalSnapshotsRoute,
@@ -67,9 +88,18 @@ import {
 import {
   handleClaudeUsageRoute,
   handleCodexUsageRoute,
+  handleGithubPublishReadinessRoute,
   handleGithubSummaryRoute,
   handleUsageHeatmapRoute,
 } from "./usageRoutes";
+import {
+  handleWorkflowItemRoute,
+  handleWorkflowRunClaimRoute,
+  handleWorkflowRunItemRoute,
+  handleWorkflowRunOutcomeRoute,
+  handleWorkflowRunsRoute,
+  handleWorkflowsRoute,
+} from "./workflowRoutes";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -99,15 +129,33 @@ type CreateApiRequestHandlerOptions = {
   readClaudeCliUsageSnapshot: () => Promise<ClaudeUsageSnapshot>;
   readCodexUsageSnapshot: () => Promise<CodexUsageSnapshot>;
   readGithubRepoSummary: () => Promise<GitHubRepoSummarySnapshot>;
+  readGithubPublishReadiness: () => Promise<GitHubPublishReadiness>;
   scanUsageHeatmap: (scope: "all" | "project") => Promise<UsageChartResponse>;
   monitorService: MonitorService;
   invalidateClaudeUsageCache: () => void;
   codeIntelStore: CodeIntelStore;
+  telegramBridge: TelegramBridge;
+  obsidianVaultPath: string;
   allowRemoteAccess: boolean;
 };
 
 const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
+  [
+    "agents",
+    [
+      handleAgentObsidianRoute,
+      handleAgentInboxRoute,
+      handleAgentActivityRoute,
+      handleOperatorUpdatesRoute,
+      handleAgentRosterRoute,
+    ],
+  ],
+  ["swarms", [handleSwarmRegistryRoute]],
+  ["agent-manifests", [handleAgentManifestEvaluateRoute, handleAgentManifestsRoute]],
+  ["operator-updates", [handleOperatorUpdatesRoute]],
+  ["autonomous-skills", [handleAutonomousSkillsRoute]],
   ["channels", [handleChannelMessagesRoute]],
+  ["telegram", [handleTelegramStatusRoute]],
   ["hooks", [handleHookRoute]],
   ["prompts", [handlePromptsCollectionRoute, handlePromptItemRoute]],
   [
@@ -127,13 +175,30 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
     ],
   ],
   ["terminal-snapshots", [handleTerminalSnapshotsRoute]],
+  ["audit", [handleAuditLogRoute]],
   ["codex", [handleCodexUsageRoute]],
   ["claude", [handleClaudeUsageRoute]],
   ["analytics", [handleUsageHeatmapRoute]],
-  ["github", [handleGithubSummaryRoute]],
+  ["github", [handleGithubPublishReadinessRoute, handleGithubSummaryRoute]],
+  ["goals", [handleGoalsRoute, handleGoalItemRoute]],
   ["setup", [handleWorkspaceSetupRoute]],
   ["ui-state", [handleUiStateRoute]],
   ["monitor", [handleMonitorConfigRoute, handleMonitorFeedRoute, handleMonitorRefreshRoute]],
+  ["memory", [handleMemoryRoute]],
+  ["sessions", [handleSessionHistoryRoute]],
+  ["runtime-policies", [handleRuntimePolicyEvaluateRoute, handleRuntimePoliciesRoute]],
+  [
+    "workflows",
+    [
+      handleWorkflowRunClaimRoute,
+      handleLocalWorkflowExecutionRoute,
+      handleWorkflowRunOutcomeRoute,
+      handleWorkflowRunItemRoute,
+      handleWorkflowRunsRoute,
+      handleWorkflowItemRoute,
+      handleWorkflowsRoute,
+    ],
+  ],
   [
     "conversations",
     [
@@ -148,6 +213,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
     [
       handleTerminalsCollectionRoute,
       handleTerminalPruneRoute,
+      handleTerminalAuditRoute,
       handleTerminalActionRoute,
       handleTerminalItemRoute,
     ],
@@ -167,6 +233,25 @@ const extractRoutePrefix = (pathname: string): string | null => {
 const logRequest = (method: string, path: string, status: number, startTime: number) => {
   logVerbose(`[API] ${method} ${path} ${status} ${Date.now() - startTime}ms`);
 };
+
+const safeDecodeURIComponent = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const extractTerminalIdFromPath = (pathname: string): string | undefined => {
+  const match = pathname.match(/^\/api\/terminals\/([^/]+)/);
+  return match ? safeDecodeURIComponent(match[1] ?? "") : undefined;
+};
+
+const extractTerminalIdFromRequest = (request: IncomingMessage, requestUrl: URL) =>
+  extractTerminalIdFromPath(requestUrl.pathname) ??
+  requestUrl.searchParams.get("octogent_session") ??
+  readHeaderValue(request.headers["x-octogent-session"]) ??
+  undefined;
 
 const serveStaticFile = async (
   response: ServerResponse,
@@ -210,10 +295,13 @@ export const createApiRequestHandler = ({
   readClaudeCliUsageSnapshot,
   readCodexUsageSnapshot,
   readGithubRepoSummary,
+  readGithubPublishReadiness,
   scanUsageHeatmap,
   monitorService,
   invalidateClaudeUsageCache,
   codeIntelStore,
+  telegramBridge,
+  obsidianVaultPath,
   allowRemoteAccess,
 }: CreateApiRequestHandlerOptions) => {
   const resolvedWebDistDir = webDistDir && existsSync(webDistDir) ? webDistDir : null;
@@ -231,20 +319,50 @@ export const createApiRequestHandler = ({
     readClaudeCliUsageSnapshot,
     readCodexUsageSnapshot,
     readGithubRepoSummary,
+    readGithubPublishReadiness,
     scanUsageHeatmap,
     monitorService,
     invalidateClaudeUsageCache,
     codeIntelStore,
+    telegramBridge,
+    obsidianVaultPath,
   };
 
   return async (request: IncomingMessage, response: ServerResponse) => {
     const startTime = Date.now();
     let statusCode = 0;
+    let didAuditRequest = false;
+    const auditRequest = () => {
+      if (didAuditRequest) {
+        return;
+      }
+      didAuditRequest = true;
+      const requestUrl = new URL(request.url ?? "/", "http://localhost");
+      if (request.method === "GET" && requestUrl.pathname === "/api/setup") {
+        return;
+      }
+      const terminalId = extractTerminalIdFromRequest(request, requestUrl);
+      runtime.appendAuditEvent("api.call", {
+        ...(terminalId ? { terminalId } : {}),
+        payload: {
+          method: request.method ?? "?",
+          path: requestUrl.pathname,
+          query: requestUrl.search,
+          status: statusCode || response.statusCode,
+          origin: readHeaderValue(request.headers.origin) ?? null,
+        },
+      });
+    };
     const originalWriteHead = response.writeHead.bind(response);
+    const originalEnd = response.end.bind(response);
     response.writeHead = ((...args: Parameters<typeof response.writeHead>) => {
       statusCode = typeof args[0] === "number" ? args[0] : 0;
       return originalWriteHead(...args);
     }) as typeof response.writeHead;
+    response.end = ((...args: Parameters<typeof response.end>) => {
+      auditRequest();
+      return originalEnd(...args);
+    }) as typeof response.end;
 
     const originHeader = readHeaderValue(request.headers.origin);
     const hostHeader = readHeaderValue(request.headers.host);

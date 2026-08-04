@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { useMemo } from "react";
 
@@ -23,6 +24,13 @@ const highlightHtml = (html: string, term: string): string => {
     .join("");
 };
 
+const sanitizeMarkdownHtml = (html: string) =>
+  DOMPurify.sanitize(html, {
+    FORBID_ATTR: ["style"],
+    FORBID_TAGS: ["base", "form", "iframe", "link", "meta", "object", "style"],
+    USE_PROFILES: { html: true },
+  });
+
 type MarkdownContentProps = {
   content: string;
   className?: string;
@@ -32,12 +40,12 @@ type MarkdownContentProps = {
 export const MarkdownContent = ({ content, className, highlightTerm }: MarkdownContentProps) => {
   const html = useMemo(() => {
     const rendered = marked.parse(content, { async: false }) as string;
-    if (highlightTerm && highlightTerm.length > 0) {
-      return highlightHtml(rendered, highlightTerm);
-    }
-    return rendered;
+    const highlighted =
+      highlightTerm && highlightTerm.length > 0 ? highlightHtml(rendered, highlightTerm) : rendered;
+    return sanitizeMarkdownHtml(highlighted);
   }, [content, highlightTerm]);
 
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered only inside the local operator UI and highlight markup is controlled.
+  // The markdown parser can emit HTML, so sanitize its output before React inserts it.
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: html is sanitized above with a strict HTML-only profile.
   return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 };

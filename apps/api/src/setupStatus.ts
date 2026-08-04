@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-import type { WorkspaceSetupSnapshot, WorkspaceSetupStep } from "@octogent/core";
+import type { AgenticOsBrain, WorkspaceSetupSnapshot, WorkspaceSetupStep } from "@octogent/core";
 
 import { readDeckTentacles } from "./deck/readDeckTentacles";
 import {
@@ -58,6 +58,98 @@ export const readWorkspaceSetupSnapshot = (
   const hasClaudeCode = prerequisites.availability.claude;
   const hasGit = prerequisites.availability.git;
   const hasCurl = prerequisites.availability.curl;
+  const brain = (
+    id: AgenticOsBrain["id"],
+    label: string,
+    role: string,
+    available: boolean,
+    command: string,
+    guidance: string,
+    workflowUrl: string,
+  ): AgenticOsBrain => ({
+    id,
+    label,
+    role,
+    // Command discovery proves only a local launcher is present, not login or a provider response.
+    status: available ? "available_local" : "needs_setup",
+    command,
+    guidance,
+    workflowUrl,
+  });
+  const brains: AgenticOsBrain[] = [
+    brain(
+      "claude",
+      "Claude Sonnet / Opus",
+      "Base planning brain: Sonnet for business/coding operations and synthesis; Opus only for complex escalations.",
+      prerequisites.availability.claude,
+      "claude",
+      "Install Claude Code and run `claude login`.",
+      process.env.OCTOGENT_CLAUDE_URL?.trim() || "https://claude.ai/",
+    ),
+    brain(
+      "notion",
+      "Notion",
+      "Shared memory, decision logs, project wiki, and operating docs.",
+      prerequisites.availability.notion,
+      "OCTOGENT_NOTION_COMMAND",
+      "Set OCTOGENT_NOTION_COMMAND to a local script that opens or syncs Notion memory.",
+      process.env.OCTOGENT_NOTION_URL?.trim() || "https://www.notion.com/",
+    ),
+    brain(
+      "gemini",
+      "Gemini Pro / Flash",
+      "Pro handles Google-family, multimodal, and long-context research; Flash handles fast bulk processing.",
+      prerequisites.availability.gemini,
+      "gemini",
+      "Install Gemini CLI, or set a custom Gemini command wrapper.",
+      process.env.OCTOGENT_GEMINI_URL?.trim() || "https://gemini.google.com/",
+    ),
+    brain(
+      "codex",
+      "Codex",
+      "Execution engine for code edits, tests, builds, and repository maintenance.",
+      prerequisites.availability.codex,
+      "codex",
+      "Install Codex CLI and run `codex login`.",
+      process.env.OCTOGENT_CODEX_URL?.trim() || "https://chatgpt.com/codex",
+    ),
+    brain(
+      "stitch",
+      "Google Stitch",
+      "UI/UX production, screen generation, and design handoff.",
+      prerequisites.availability.stitch,
+      "OCTOGENT_STITCH_COMMAND",
+      "Set OCTOGENT_STITCH_COMMAND to a script that opens or prepares Stitch work.",
+      process.env.OCTOGENT_STITCH_URL?.trim() || "https://stitch.withgoogle.com/",
+    ),
+    brain(
+      "perplexity",
+      "Perplexity",
+      "Current-source research and citation-heavy market checks.",
+      prerequisites.availability.perplexity,
+      "pplx / OCTOGENT_PERPLEXITY_COMMAND",
+      "Install a Perplexity CLI wrapper or set OCTOGENT_PERPLEXITY_COMMAND.",
+      process.env.OCTOGENT_PERPLEXITY_URL?.trim() || "https://www.perplexity.ai/",
+    ),
+    brain(
+      "notebooklm",
+      "NotebookLM",
+      "Curated source-grounded research room for selected links, PDFs, transcripts, and source Q&A.",
+      prerequisites.availability.notebooklm,
+      "OCTOGENT_NOTEBOOKLM_COMMAND",
+      "Set OCTOGENT_NOTEBOOKLM_COMMAND to a script that opens or syncs NotebookLM research.",
+      process.env.OCTOGENT_NOTEBOOKLM_URL?.trim() || "https://notebooklm.google.com/",
+    ),
+    brain(
+      "qwen",
+      "Qwen / LM Studio",
+      "Local Qwen workers for private, low-cost background drafting, tagging, and memory extraction.",
+      prerequisites.availability.lmStudio,
+      "lms / OCTOGENT_LM_STUDIO_COMMAND",
+      "Install LM Studio and load a Qwen model, or set OCTOGENT_LM_STUDIO_COMMAND.",
+      process.env.OCTOGENT_LM_STUDIO_URL?.trim() || "https://lmstudio.ai/",
+    ),
+  ];
 
   const steps: WorkspaceSetupStep[] = [
     {
@@ -170,5 +262,8 @@ export const readWorkspaceSetupSnapshot = (
     hasAnyTentacles,
     tentacleCount,
     steps,
+    agenticOs: {
+      brains,
+    },
   };
 };

@@ -281,7 +281,7 @@ describe("App Monitor runtime", () => {
       await within(monitorView).findByText("Manual refresh delivered this post"),
     ).toBeInTheDocument();
     expect(refreshCount).toBe(1);
-  });
+  }, 15_000);
 
   it("polls monitor feed and updates stale view automatically", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -9,7 +9,18 @@ type CanvasTransform = {
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 3.0;
+const DEFAULT_MAX_FIT_SCALE = 1.8;
+const SMALL_STAGE_NODE_COUNT = 6;
+const MEDIUM_STAGE_NODE_COUNT = 12;
+const SMALL_STAGE_MIN_SCALE = 1.2;
+const MEDIUM_STAGE_MIN_SCALE = 1.05;
+const SMALL_STAGE_MAX_SCALE = 1.85;
+const MEDIUM_STAGE_MAX_SCALE = 1.8;
+const CANVAS_TOOLBAR_SAFE_TOP = 104;
+const VISUAL_RADIUS_MULTIPLIER = 2.35;
+const MIN_VISUAL_RADIUS = 44;
 const ZOOM_FACTOR = 0.1;
+type FitNode = { x: number; y: number; radius?: number };
 
 type UseCanvasTransformResult = {
   transform: CanvasTransform;
@@ -23,7 +34,61 @@ type UseCanvasTransformResult = {
   graphToScreen: (graphX: number, graphY: number) => { x: number; y: number };
   zoomIn: () => void;
   zoomOut: () => void;
-  fitAll: (nodes: { x: number; y: number }[]) => void;
+  fitAll: (nodes: FitNode[]) => void;
+};
+
+export const calculateCanvasFitTransform = (
+  nodes: FitNode[],
+  rect: { width: number; height: number },
+): CanvasTransform | null => {
+  if (nodes.length === 0 || rect.width === 0 || rect.height === 0) {
+    return null;
+  }
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const n of nodes) {
+    const radius = Math.max(MIN_VISUAL_RADIUS, (n.radius ?? 0) * VISUAL_RADIUS_MULTIPLIER);
+    minX = Math.min(minX, n.x - radius);
+    minY = Math.min(minY, n.y - radius);
+    maxX = Math.max(maxX, n.x + radius);
+    maxY = Math.max(maxY, n.y + radius);
+  }
+
+  const graphW = maxX - minX || 1;
+  const graphH = maxY - minY || 1;
+  const padding = Math.min(72, Math.max(28, Math.min(rect.width, rect.height) * 0.08));
+  const topPadding = rect.height > 480 ? padding + CANVAS_TOOLBAR_SAFE_TOP : padding;
+  const usableW = Math.max(1, rect.width - padding * 2);
+  const usableH = Math.max(1, rect.height - topPadding - padding);
+  const scaleX = usableW / graphW;
+  const scaleY = usableH / graphH;
+  const rawScale = Math.min(scaleX, scaleY);
+  const stageMinScale =
+    nodes.length <= SMALL_STAGE_NODE_COUNT
+      ? SMALL_STAGE_MIN_SCALE
+      : nodes.length <= MEDIUM_STAGE_NODE_COUNT
+        ? MEDIUM_STAGE_MIN_SCALE
+        : MIN_SCALE;
+  const stageMaxScale =
+    nodes.length <= SMALL_STAGE_NODE_COUNT
+      ? SMALL_STAGE_MAX_SCALE
+      : nodes.length <= MEDIUM_STAGE_NODE_COUNT
+        ? MEDIUM_STAGE_MAX_SCALE
+        : DEFAULT_MAX_FIT_SCALE;
+  const canUseStageScale = graphW * stageMinScale <= usableW && graphH * stageMinScale <= usableH;
+  const minScale = canUseStageScale ? stageMinScale : MIN_SCALE;
+  const scale = Math.min(Math.max(rawScale, minScale), stageMaxScale);
+  const centerGx = (minX + maxX) / 2;
+  const centerGy = (minY + maxY) / 2;
+
+  return {
+    scale,
+    translateX: rect.width / 2 - centerGx * scale,
+    translateY: topPadding + usableH / 2 - centerGy * scale,
+  };
 };
 
 export const useCanvasTransform = (): UseCanvasTransformResult => {
@@ -210,37 +275,14 @@ export const useCanvasTransform = (): UseCanvasTransformResult => {
     });
   }, []);
 
-  const fitAll = useCallback((nodes: { x: number; y: number }[]) => {
+  const fitAll = useCallback((nodes: FitNode[]) => {
     const svg = svgRef.current;
     if (!svg || nodes.length === 0) return;
     const rect = svg.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    for (const n of nodes) {
-      if (n.x < minX) minX = n.x;
-      if (n.y < minY) minY = n.y;
-      if (n.x > maxX) maxX = n.x;
-      if (n.y > maxY) maxY = n.y;
-    }
-
-    const graphW = maxX - minX || 1;
-    const graphH = maxY - minY || 1;
-    const padding = 80;
-    const scaleX = (rect.width - padding * 2) / graphW;
-    const scaleY = (rect.height - padding * 2) / graphH;
-    const scale = Math.min(Math.max(Math.min(scaleX, scaleY), MIN_SCALE), MAX_SCALE);
-    const centerGx = (minX + maxX) / 2;
-    const centerGy = (minY + maxY) / 2;
-
-    setTransform({
-      scale,
-      translateX: rect.width / 2 - centerGx * scale,
-      translateY: rect.height / 2 - centerGy * scale,
-    });
+    const nextTransform = calculateCanvasFitTransform(nodes, rect);
+    if (nextTransform) setTransform(nextTransform);
   }, []);
 
   return {

@@ -13,6 +13,7 @@ import {
   initializeWorkspaceFiles,
   readWorkspaceSetupSnapshot,
 } from "../setupStatus";
+import { MAX_CHANNEL_MESSAGE_LENGTH } from "../terminalRuntime/channelMessaging";
 import type { ApiRouteHandler } from "./routeHelpers";
 import {
   readJsonBodyOrWriteError,
@@ -266,12 +267,23 @@ export const handlePromptItemRoute: ApiRouteHandler = async (
 
 // ─── Channel routes ───────────────────────────────────────────────────────
 
+const CHANNELS_PATH = "/api/channels";
 const CHANNEL_MESSAGES_PATH_PATTERN = /^\/api\/channels\/([^/]+)\/messages$/;
 
 export const handleChannelMessagesRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
   { runtime },
 ) => {
+  if (requestUrl.pathname === CHANNELS_PATH) {
+    if (request.method !== "GET") {
+      writeMethodNotAllowed(response, corsOrigin);
+      return true;
+    }
+
+    writeJson(response, 200, { messages: runtime.listAllChannelMessages() }, corsOrigin);
+    return true;
+  }
+
   const match = requestUrl.pathname.match(CHANNEL_MESSAGES_PATH_PATTERN);
   if (!match) {
     return false;
@@ -300,8 +312,35 @@ export const handleChannelMessagesRoute: ApiRouteHandler = async (
     body && typeof body.fromTerminalId === "string" ? body.fromTerminalId.trim() : "";
   const content = body && typeof body.content === "string" ? body.content.trim() : "";
 
+  if (fromTerminalId && fromTerminalId !== "operator") {
+    const capabilityHeader = request.headers["x-octogent-terminal-capability"];
+    const capability = typeof capabilityHeader === "string" ? capabilityHeader.trim() : "";
+    if (!runtime.verifyTerminalChannelSender(fromTerminalId, capability)) {
+      runtime.appendAuditEvent("channel.message_rejected", {
+        terminalId,
+        payload: { fromTerminalId, reason: "missing_or_invalid_sender_capability" },
+      });
+      writeJson(
+        response,
+        403,
+        { error: "Agent channel messages require the sending terminal's active local capability." },
+        corsOrigin,
+      );
+      return true;
+    }
+  }
+
   if (content.length === 0) {
     writeJson(response, 400, { error: "Message content cannot be empty." }, corsOrigin);
+    return true;
+  }
+  if (content.length > MAX_CHANNEL_MESSAGE_LENGTH) {
+    writeJson(
+      response,
+      400,
+      { error: `Message content must be ${MAX_CHANNEL_MESSAGE_LENGTH} characters or fewer.` },
+      corsOrigin,
+    );
     return true;
   }
 

@@ -22,6 +22,7 @@ vi.mock("../src/terminalRuntime/ptyEnvironment", () => ({
   ensureNodePtySpawnHelperExecutable: ensureSpawnHelperMock,
 }));
 
+import { createTerminalSecurity, terminalChannelCapability } from "../src/terminalRuntime/security";
 import { createSessionRuntime } from "../src/terminalRuntime/sessionRuntime";
 import type { PersistedTerminal, TerminalSession } from "../src/terminalRuntime/types";
 
@@ -123,6 +124,48 @@ describe("createSessionRuntime", () => {
       rmSync(directory, { recursive: true, force: true });
     }
     temporaryDirectories.length = 0;
+  });
+
+  it("passes a private channel capability only to the managed terminal shell", () => {
+    const terminalId = "secured-terminal";
+    const terminal: PersistedTerminal = {
+      terminalId,
+      tentacleId: "game-business",
+      tentacleName: "Secured terminal",
+      createdAt: new Date().toISOString(),
+      workspaceMode: "shared",
+      agentProvider: "codex",
+      security: createTerminalSecurity({
+        terminalId,
+        tentacleId: "game-business",
+        workspaceMode: "shared",
+        agentProvider: "codex",
+      }),
+    };
+    const terminals = new Map([[terminalId, terminal]]);
+    const sessions = new Map<string, TerminalSession>();
+    const websocketServer = new FakeWebSocketServer();
+    const pty = new FakePty();
+    spawnMock.mockReturnValue(pty);
+
+    const runtime = createSessionRuntime({
+      websocketServer: websocketServer as unknown as import("ws").WebSocketServer,
+      terminals,
+      sessions,
+      getTentacleWorkspaceCwd: () => process.cwd(),
+      isDebugPtyLogsEnabled: false,
+      ptyLogDir: process.cwd(),
+      transcriptDirectoryPath: createTemporaryDirectory(),
+    });
+
+    websocketServer.nextSocket = new FakeWebSocket();
+    runtime.handleUpgrade(createUpgradeRequest(terminalId), {} as Duplex, Buffer.alloc(0));
+
+    expect(createShellEnvironmentMock).toHaveBeenCalledWith({
+      octogentSessionId: terminalId,
+      octogentChannelCapability: terminalChannelCapability(terminal),
+    });
+    runtime.close();
   });
 
   it("keeps a session alive across reconnects and replays scrollback history", () => {
@@ -676,16 +719,29 @@ describe("createSessionRuntime", () => {
     runtime.close();
 
     const transcriptPath = join(transcriptDirectoryPath, `${encodeURIComponent(tentacleId)}.jsonl`);
+    let transcriptEvents: Array<{ type: string; text?: string; reason?: string }> = [];
     for (let attempt = 0; attempt < 20; attempt += 1) {
       if (existsSync(transcriptPath)) {
-        break;
+        try {
+          transcriptEvents = readFileSync(transcriptPath, "utf8")
+            .trim()
+            .split(/\r?\n/)
+            .map((line) => JSON.parse(line) as { type: string; text?: string; reason?: string });
+
+          if (
+            transcriptEvents.some((event) => event.type === "session_start") &&
+            transcriptEvents.some(
+              (event) => event.type === "session_end" && event.reason === "session_close",
+            )
+          ) {
+            break;
+          }
+        } catch {
+          // The transcript writer can briefly expose a partially-written JSONL line.
+        }
       }
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
-    const transcriptEvents = readFileSync(transcriptPath, "utf8")
-      .trim()
-      .split(/\r?\n/)
-      .map((line) => JSON.parse(line) as { type: string; text?: string; reason?: string });
 
     expect(transcriptEvents.some((event) => event.type === "session_start")).toBe(true);
     expect(

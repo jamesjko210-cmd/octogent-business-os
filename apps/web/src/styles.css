@@ -19,4 +19,16 @@
 @import "./styles/console-canvas-canvas.css";
 @import "./styles/console-canvas-code-intel.css";
 @import "./styles/console-canvas-prompts.css";
+@import "./styles/console-canvas-workflows.css";
 @import "./styles/console-overrides-telemetry.css";
+
+.primary-view-loading {
+  display: grid;
+  min-height: 18rem;
+  place-items: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

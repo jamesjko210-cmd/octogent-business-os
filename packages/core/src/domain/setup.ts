@@ -18,10 +18,35 @@ export type WorkspaceSetupStep = {
   command: string | null;
 };
 
+export type AgenticOsBrainId =
+  | "claude"
+  | "notion"
+  | "gemini"
+  | "codex"
+  | "stitch"
+  | "perplexity"
+  | "notebooklm"
+  | "qwen";
+
+export type AgenticOsBrainStatus = "available_local" | "needs_setup";
+
+export type AgenticOsBrain = {
+  id: AgenticOsBrainId;
+  label: string;
+  role: string;
+  status: AgenticOsBrainStatus;
+  command: string;
+  guidance: string;
+  workflowUrl: string;
+};
+
 export type WorkspaceSetupSnapshot = {
   isFirstRun: boolean;
   shouldShowSetupCard: boolean;
   hasAnyTentacles: boolean;
   tentacleCount: number;
   steps: WorkspaceSetupStep[];
+  agenticOs: {
+    brains: AgenticOsBrain[];
+  };
 };

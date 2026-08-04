@@ -7,6 +7,7 @@ import { useClaudeUsagePolling } from "./app/hooks/useClaudeUsagePolling";
 import { useCodexUsagePolling } from "./app/hooks/useCodexUsagePolling";
 import { useConsoleKeyboardShortcuts } from "./app/hooks/useConsoleKeyboardShortcuts";
 import { useGitHubPrimaryViewModel } from "./app/hooks/useGitHubPrimaryViewModel";
+import { useGithubPublishReadinessPolling } from "./app/hooks/useGithubPublishReadinessPolling";
 import { useGithubSummaryPolling } from "./app/hooks/useGithubSummaryPolling";
 import { useInitialColumnsHydration } from "./app/hooks/useInitialColumnsHydration";
 import { useMonitorRuntime } from "./app/hooks/useMonitorRuntime";
@@ -290,6 +291,8 @@ export const App = () => {
   const backendLivenessStatus = useBackendLivenessPolling();
   const { githubRepoSummary, isRefreshingGitHubSummary, refreshGitHubRepoSummary } =
     useGithubSummaryPolling();
+  const { githubPublishReadiness, refresh: refreshGithubPublishReadiness } =
+    useGithubPublishReadinessPolling(activePrimaryNav === 3);
   const handleMaximizeTerminal = useCallback(
     (terminalId: string) => {
       setMinimizedTerminalIds((current) =>
@@ -436,14 +439,15 @@ export const App = () => {
 
       <section className="console-main-canvas" aria-label="Main content canvas">
         <div
-          className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 4 && activePrimaryNav !== 5 && activePrimaryNav !== 8 ? "" : " workspace-shell--full"}`}
+          className={`workspace-shell${isAgentsSidebarVisible && activePrimaryNav !== 1 && activePrimaryNav !== 3 && activePrimaryNav !== 4 && activePrimaryNav !== 5 && activePrimaryNav !== 8 && activePrimaryNav !== 9 ? "" : " workspace-shell--full"}`}
         >
           {isAgentsSidebarVisible &&
             activePrimaryNav !== 1 &&
             activePrimaryNav !== 3 &&
             activePrimaryNav !== 4 &&
             activePrimaryNav !== 5 &&
-            activePrimaryNav !== 8 && (
+            activePrimaryNav !== 8 &&
+            activePrimaryNav !== 9 && (
               <ActiveAgentsSidebar
                 sidebarWidth={sidebarWidth}
                 onSidebarWidthChange={(width) => {
@@ -482,6 +486,7 @@ export const App = () => {
               },
               githubPrimaryViewProps: {
                 githubCommitCount30d,
+                githubPublishReadiness,
                 githubOpenIssuesLabel,
                 githubOpenPrsLabel,
                 githubRecentCommits,
@@ -496,6 +501,7 @@ export const App = () => {
                 onHoveredGitHubOverviewPointIndexChange: setHoveredGitHubOverviewPointIndex,
                 onRefresh: () => {
                   void refreshGitHubRepoSummary();
+                  refreshGithubPublishReadiness();
                 },
               },
             }}
@@ -503,11 +509,14 @@ export const App = () => {
             settingsPrimaryViewProps={{
               isMonitorVisible,
               isRuntimeStatusStripVisible,
+              isWorkspaceSetupLoading,
               onMonitorVisibilityChange: setIsMonitorVisible,
               onRuntimeStatusStripVisibilityChange: setIsRuntimeStatusStripVisible,
               onPreviewTerminalCompletionSound: playCompletionSoundPreview,
               onTerminalCompletionSoundChange: setTerminalCompletionSound,
               terminalCompletionSound,
+              workspaceSetup,
+              workspaceSetupError,
             }}
             canvasPrimaryViewProps={{
               columns: terminals,
@@ -564,13 +573,13 @@ export const App = () => {
                 if (!response.ok) return;
                 await refreshColumns();
               },
-              onSpawnSwarm: async (tentacleId, workspaceMode) => {
+              onSpawnSwarm: async (tentacleId, workspaceMode, swarmId) => {
                 const response = await fetch(
                   `/api/deck/tentacles/${encodeURIComponent(tentacleId)}/swarm`,
                   {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ workspaceMode }),
+                    body: JSON.stringify({ workspaceMode, ...(swarmId ? { swarmId } : {}) }),
                   },
                 );
                 if (!response.ok) return;
@@ -636,6 +645,7 @@ export const App = () => {
               },
             }}
             conversationsEnabled={isUiStateHydrated && activePrimaryNav === 6}
+            conversationTerminalColumns={terminals}
             onConversationsSidebarContent={setConversationsSidebarContent}
             onConversationsActionPanel={setConversationsActionPanel}
             promptsEnabled={isUiStateHydrated && activePrimaryNav === 7}

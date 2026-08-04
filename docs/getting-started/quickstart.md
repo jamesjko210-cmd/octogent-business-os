@@ -57,13 +57,29 @@ Use `--workspace-mode worktree` if you want an isolated git worktree.
 
 ## 5. Delegate from todo items
 
-The runtime can parse incomplete items in `todo.md` and use them as inputs when spawning child agents from the Deck swarm flow. That means one item can become one worker, or a larger list can become a swarm.
+The runtime can parse incomplete items in `todo.md` and use them as inputs when spawning child agents from the Deck swarm flow. That means one item can become one worker, or a larger list can become a swarm. Use named swarms when you want parallel tracks such as `business`, `research`, and `coding` to run at the same time.
 
 ## 6. Send a message
 
 ```bash
 octogent channel send terminal-2 "Need review on the request parser changes"
 ```
+
+## 7. Open a workflow brain
+
+Use connector launchers when you want Octogent to hand a job to a logged-in web app instead of an API-key agent:
+
+```bash
+octogent connector open claude
+octogent connector open notion
+octogent connector open gemini
+octogent connector open codex
+octogent connector open stitch
+octogent connector open perplexity
+octogent connector open lm-studio
+```
+
+For your current operating model, Claude Sonnet is the base planning brain, Claude Opus is reserved for complex escalations, Codex executes code/tests, Gemini Pro/Flash handles Google-family and fast processing work, the research triad uses Perplexity for live cited scouting, NotebookLM for curated source-grounded Q&A, and Notion for durable briefs/decisions/tasks, Qwen via LM Studio handles local background workers, and Stitch produces UI/UX.
 
 ## What to verify
 

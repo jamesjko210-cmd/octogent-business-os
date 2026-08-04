@@ -1,5 +1,7 @@
 import { join } from "node:path";
 
+import type { TerminalAgentProvider } from "@octogent/core";
+import { renderAutonomousSkillsSection } from "../autonomousSkills";
 import {
   addTodoItem,
   createDeckTentacle,
@@ -13,7 +15,9 @@ import {
   toggleTodoItem,
   updateDeckTentacleSuggestedSkills,
 } from "../deck/readDeckTentacles";
+import { renderGoalRuntimeSection } from "../goalRuntime";
 import { resolvePrompt } from "../prompts";
+import { renderRuntimePolicySection } from "../runtimePolicies";
 import { MAX_CHILDREN_PER_PARENT, RuntimeInputError } from "../terminalRuntime";
 import type { ApiRouteHandler } from "./routeHelpers";
 import {
@@ -26,6 +30,13 @@ import {
 import { parseTerminalAgentProvider, parseTerminalWorkspaceMode } from "./terminalParsers";
 
 const shellSingleQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+const RESEARCH_FALLBACK_PROVIDER_SEQUENCE: TerminalAgentProvider[] = [
+  "perplexity",
+  "notebooklm",
+  "notion",
+  "claude-code",
+  "gemini-cli",
+];
 
 const buildSingleTodoWorkerPrompt = async ({
   promptsDir,
@@ -512,6 +523,205 @@ export const handleDeckTodoSolveRoute: ApiRouteHandler = async (
 
 const DECK_TENTACLE_SWARM_PATTERN = /^\/api\/deck\/tentacles\/([^/]+)\/swarm$/;
 
+const normalizeSwarmNamespace = (value: unknown) => {
+  if (value === undefined || value === null) {
+    return {
+      swarmId: "default",
+      terminalPrefix: "swarm",
+      displayName: "swarm",
+      isDefault: true,
+      error: null as string | null,
+    };
+  }
+
+  if (typeof value !== "string") {
+    return {
+      swarmId: "",
+      terminalPrefix: "",
+      displayName: "",
+      isDefault: false,
+      error: "swarmId must be a string.",
+    };
+  }
+
+  const displayName = value.trim();
+  const swarmId = displayName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+
+  if (!swarmId) {
+    return {
+      swarmId: "",
+      terminalPrefix: "",
+      displayName: "",
+      isDefault: false,
+      error: "swarmId must contain at least one letter or number.",
+    };
+  }
+
+  return {
+    swarmId,
+    terminalPrefix: `swarm-${swarmId}`,
+    displayName,
+    isDefault: false,
+    error: null as string | null,
+  };
+};
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isTerminalInSwarmNamespace = (
+  terminalId: string,
+  tentacleId: string,
+  swarmNamespace: ReturnType<typeof normalizeSwarmNamespace>,
+) => {
+  if (swarmNamespace.isDefault) {
+    const escapedTentacleId = escapeRegExp(tentacleId);
+    return new RegExp(`^${escapedTentacleId}-swarm-(?:parent|\\d+)$`).test(terminalId);
+  }
+
+  return terminalId.startsWith(`${tentacleId}-${swarmNamespace.terminalPrefix}-`);
+};
+
+const isResearchDefaultSwarm = ({
+  tentacleId,
+  tentacleName,
+  swarmNamespace,
+}: {
+  tentacleId: string;
+  tentacleName: string;
+  swarmNamespace: ReturnType<typeof normalizeSwarmNamespace>;
+}) => {
+  const haystack = [tentacleId, tentacleName, swarmNamespace.swarmId, swarmNamespace.displayName]
+    .join(" ")
+    .toLowerCase();
+
+  return /\bresearch\b/.test(haystack);
+};
+
+const countKeywordMatches = (haystack: string, keywords: string[]) =>
+  keywords.reduce((score, keyword) => (haystack.includes(keyword) ? score + 1 : score), 0);
+
+const resolveResearchDefaultProvider = (
+  todoText: string,
+  todoIndex: number,
+): TerminalAgentProvider => {
+  const prompt = todoText.toLowerCase();
+  const providerScores: Array<{ provider: TerminalAgentProvider; score: number }> = [
+    {
+      provider: "perplexity",
+      score:
+        countKeywordMatches(prompt, [
+          "citation",
+          "cite",
+          "source",
+          "sources",
+          "latest",
+          "current",
+          "news",
+          "market",
+          "competitor",
+          "competitors",
+          "benchmark",
+          "pricing",
+          "statistics",
+          "stats",
+          "trend",
+          "trends",
+        ]) * 2,
+    },
+    {
+      provider: "notebooklm",
+      score:
+        countKeywordMatches(prompt, [
+          "notebooklm",
+          "notebook lm",
+          "curated",
+          "source-grounded",
+          "grounded",
+          "uploaded",
+          "pdf",
+          "transcript",
+          "selected sources",
+          "source set",
+          "q&a",
+          "qa",
+        ]) * 2,
+    },
+    {
+      provider: "notion",
+      score:
+        countKeywordMatches(prompt, [
+          "notion",
+          "brief",
+          "source index",
+          "decision log",
+          "decisions",
+          "tasks",
+          "memory",
+          "bmc",
+          "business model canvas",
+          "archive",
+          "store",
+        ]) * 2,
+    },
+    {
+      provider: "gemini-cli",
+      score:
+        countKeywordMatches(prompt, [
+          "google",
+          "youtube",
+          "gmail",
+          "calendar",
+          "sheets",
+          "docs",
+          "drive",
+          "maps",
+          "ads",
+          "analytics",
+          "search console",
+          "seo",
+          "keyword",
+          "keywords",
+        ]) * 2,
+    },
+    {
+      provider: "claude-code",
+      score:
+        countKeywordMatches(prompt, [
+          "synthesize",
+          "synthesis",
+          "strategy",
+          "strategic",
+          "recommend",
+          "recommendation",
+          "compare",
+          "decision",
+          "plan",
+          "positioning",
+          "operations",
+          "risks",
+          "tradeoffs",
+          "why",
+        ]) * 2,
+    },
+  ];
+  const bestProvider = providerScores.reduce((best, candidate) =>
+    candidate.score > best.score ? candidate : best,
+  );
+
+  if (bestProvider.score > 0) {
+    return bestProvider.provider;
+  }
+
+  return (
+    RESEARCH_FALLBACK_PROVIDER_SEQUENCE[todoIndex % RESEARCH_FALLBACK_PROVIDER_SEQUENCE.length] ??
+    "claude-code"
+  );
+};
+
 export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
   { runtime, workspaceCwd, projectStateDir, promptsDir, getApiPort },
@@ -553,6 +763,7 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
     writeJson(response, 400, { error: agentProviderResult.error }, corsOrigin);
     return true;
   }
+  const explicitSwarmAgentProvider = agentProviderResult.agentProvider;
 
   const workspaceModeResult = parseTerminalWorkspaceMode(body);
   if (workspaceModeResult.error) {
@@ -561,6 +772,12 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
   }
   const workerWorkspaceMode =
     body.workspaceMode === undefined ? "worktree" : workspaceModeResult.workspaceMode;
+
+  const swarmNamespace = normalizeSwarmNamespace(body.swarmId ?? body.swarmName);
+  if (swarmNamespace.error) {
+    writeJson(response, 400, { error: swarmNamespace.error }, corsOrigin);
+    return true;
+  }
 
   // Filter to specific item indices if requested.
   let targetItems = incompleteItems;
@@ -588,13 +805,16 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
   // Check for existing swarm terminals to prevent duplicates.
   const existingTerminals = runtime.listTerminalSnapshots();
   const existingSwarmIds = existingTerminals
-    .filter((t) => t.terminalId.startsWith(`${tentacleId}-swarm-`))
+    .filter((t) => isTerminalInSwarmNamespace(t.terminalId, tentacleId, swarmNamespace))
     .map((t) => t.terminalId);
   if (existingSwarmIds.length > 0) {
     writeJson(
       response,
       409,
-      { error: "A swarm is already active for this tentacle.", existingSwarmIds },
+      {
+        error: `A ${swarmNamespace.displayName} swarm is already active for this tentacle.`,
+        existingSwarmIds,
+      },
       corsOrigin,
     );
     return true;
@@ -610,16 +830,34 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
   const deckTentacles = readDeckTentacles(workspaceCwd, projectStateDir);
   const deckEntry = deckTentacles.find((t) => t.tentacleId === tentacleId);
   const tentacleName = deckEntry?.displayName ?? tentacleId;
+  const shouldUseResearchDefaults =
+    explicitSwarmAgentProvider === undefined &&
+    isResearchDefaultSwarm({ tentacleId, tentacleName, swarmNamespace });
+  const resolveWorkerAgentProvider = (todoIndex: number): TerminalAgentProvider | undefined =>
+    explicitSwarmAgentProvider ??
+    (shouldUseResearchDefaults
+      ? resolveResearchDefaultProvider(
+          targetItems.find((item) => item.index === todoIndex)?.text ?? "",
+          todoIndex,
+        )
+      : undefined);
+  const parentAgentProvider: TerminalAgentProvider | undefined =
+    explicitSwarmAgentProvider ?? (shouldUseResearchDefaults ? "claude-code" : undefined);
 
   const apiPort = getApiPort();
   const needsParent = targetItems.length > 1;
-  const parentTerminalId = needsParent ? `${tentacleId}-swarm-parent` : null;
+  const parentTerminalId = needsParent
+    ? `${tentacleId}-${swarmNamespace.terminalPrefix}-parent`
+    : null;
   const tentacleContextPath = join(workspaceCwd, ".octogent/tentacles", tentacleId);
   const workers = targetItems.map((item) => ({
-    terminalId: `${tentacleId}-swarm-${item.index}`,
+    terminalId: `${tentacleId}-${swarmNamespace.terminalPrefix}-${item.index}`,
     todoIndex: item.index,
     todoText: item.text,
   }));
+  const integrationBranchName = swarmNamespace.isDefault
+    ? `octogent_integration_${tentacleId}`
+    : `octogent_integration_${tentacleId}_${swarmNamespace.swarmId}`;
 
   const buildWorkerContextIntro = (): string =>
     workerWorkspaceMode === "worktree"
@@ -672,9 +910,9 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
           "",
           `1. **Create an integration branch** from \`${baseBranch}\`. First check if a stale integration branch exists from a previous swarm attempt — if so, delete it before proceeding:`,
           "   ```bash",
-          `   git branch -D octogent_integration_${tentacleId} 2>/dev/null || true`,
+          `   git branch -D ${integrationBranchName} 2>/dev/null || true`,
           `   git checkout ${baseBranch}`,
-          `   git checkout -b octogent_integration_${tentacleId}`,
+          `   git checkout -b ${integrationBranchName}`,
           "   ```",
           "",
           "2. **Merge each worker branch** into the integration branch one at a time. Start with the branch most likely to merge cleanly (fewest changes):",
@@ -688,7 +926,7 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
           "4. **If tests pass**, merge the integration branch into the base branch:",
           "   ```bash",
           `   git checkout ${baseBranch}`,
-          `   git merge octogent_integration_${tentacleId} --no-edit`,
+          `   git merge ${integrationBranchName} --no-edit`,
           "   ```",
           "",
           "5. **If tests fail**, investigate and fix before merging. Do not merge broken code.",
@@ -697,7 +935,7 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
           "",
           "7. **Clean up** the integration branch:",
           "   ```bash",
-          `   git branch -d octogent_integration_${tentacleId}`,
+          `   git branch -d ${integrationBranchName}`,
           "   ```",
           "",
           "### Merge failure recovery",
@@ -740,6 +978,7 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
         writeJson(response, 400, { error: "No incomplete todo items found." }, corsOrigin);
         return true;
       }
+      const workerAgentProvider = resolveWorkerAgentProvider(item.index);
 
       const workerPrompt = await resolvePrompt(promptsDir, "swarm-worker", {
         tentacleName,
@@ -755,6 +994,9 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
         workspaceReminder: buildWorkerReminder(),
         parentTerminalId: "",
         parentSection: "",
+        autonomousSkillsSection: renderAutonomousSkillsSection(),
+        goalRuntimeSection: renderGoalRuntimeSection({ projectStateDir, tentacleId }),
+        runtimePolicySection: renderRuntimePolicySection(),
       });
 
       runtime.createTerminal({
@@ -765,9 +1007,7 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
         nameOrigin: "generated",
         autoRenamePromptContext: item.text,
         workspaceMode: workerWorkspaceMode,
-        ...(agentProviderResult.agentProvider
-          ? { agentProvider: agentProviderResult.agentProvider }
-          : {}),
+        ...(workerAgentProvider ? { agentProvider: workerAgentProvider } : {}),
         ...(workerPrompt ? { initialPrompt: workerPrompt } : {}),
         ...(workerWorkspaceMode === "worktree" ? { baseRef } : {}),
       });
@@ -780,7 +1020,8 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
 
       const workerSpawnCommands = targetItems
         .map((item) => {
-          const workerTerminalId = `${tentacleId}-swarm-${item.index}`;
+          const workerTerminalId = `${tentacleId}-${swarmNamespace.terminalPrefix}-${item.index}`;
+          const workerAgentProvider = resolveWorkerAgentProvider(item.index);
           const parentSection = [
             "## Communication",
             "",
@@ -809,6 +1050,9 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
             workspaceReminder: buildWorkerReminder(),
             parentTerminalId,
             parentSection,
+            autonomousSkillsSection: renderAutonomousSkillsSection(),
+            goalRuntimeSection: renderGoalRuntimeSection({ projectStateDir, tentacleId }),
+            runtimePolicySection: renderRuntimePolicySection(),
           });
 
           const commandParts = [
@@ -823,6 +1067,9 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
             "--prompt-template swarm-worker",
             `--prompt-variables ${shellSingleQuote(promptVariables)}`,
           ];
+          if (workerAgentProvider) {
+            commandParts.splice(4, 0, `--agent-provider ${shellSingleQuote(workerAgentProvider)}`);
+          }
           if (workerWorkspaceMode === "worktree") {
             commandParts.splice(3, 0, `--worktree-id ${shellSingleQuote(workerTerminalId)}`);
           }
@@ -847,16 +1094,19 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
         baseBranch: parentBaseBranch,
         terminalId: parentTerminalId,
         apiPort,
+        autonomousSkillsSection: renderAutonomousSkillsSection(),
+        goalRuntimeSection: renderGoalRuntimeSection({ projectStateDir, tentacleId }),
+        runtimePolicySection: renderRuntimePolicySection(),
       });
 
       runtime.createTerminal({
         terminalId: parentTerminalId,
         tentacleId,
-        tentacleName: `${tentacleName} (coordinator)`,
+        tentacleName: swarmNamespace.isDefault
+          ? `${tentacleName} (coordinator)`
+          : `${tentacleName} (${swarmNamespace.displayName} coordinator)`,
         workspaceMode: "shared",
-        ...(agentProviderResult.agentProvider
-          ? { agentProvider: agentProviderResult.agentProvider }
-          : {}),
+        ...(parentAgentProvider ? { agentProvider: parentAgentProvider } : {}),
         ...(parentPrompt ? { initialPrompt: parentPrompt } : {}),
       });
     }
@@ -868,6 +1118,16 @@ export const handleDeckTentacleSwarmRoute: ApiRouteHandler = async (
     throw error;
   }
 
-  writeJson(response, 201, { tentacleId, parentTerminalId, workers }, corsOrigin);
+  writeJson(
+    response,
+    201,
+    {
+      tentacleId,
+      ...(swarmNamespace.isDefault ? {} : { swarmId: swarmNamespace.swarmId }),
+      parentTerminalId,
+      workers,
+    },
+    corsOrigin,
+  );
   return true;
 };

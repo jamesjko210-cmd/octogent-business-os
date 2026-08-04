@@ -41,8 +41,10 @@ Terminal WebSockets do not own the PTY. They are clients attached to a PTY sessi
 ## Security defaults
 
 - binds to `127.0.0.1` by default
-- enforces loopback `Host` and `Origin` checks by default
-- remote access must be enabled explicitly with `OCTOGENT_ALLOW_REMOTE_ACCESS=1`
+- enforces loopback `Host` and `Origin` checks for every request
+- does not expose the unauthenticated management plane remotely, even when the legacy `OCTOGENT_ALLOW_REMOTE_ACCESS=1` environment value is set
+
+Remote operator access is intentionally deferred until Octogent has a separately reviewed authenticated transport. Do not use a port forward, tunnel, or reverse proxy as a substitute for that boundary.
 
 ## Persistence model
 

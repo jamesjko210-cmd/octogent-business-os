@@ -23,6 +23,7 @@ import {
 } from "./conversations";
 import { broadcastMessage, getTerminalId, sendMessage } from "./protocol";
 import { createShellEnvironment, ensureNodePtySpawnHelperExecutable } from "./ptyEnvironment";
+import { type AuditEventType, terminalChannelCapability } from "./security";
 import { toErrorMessage } from "./systemClients";
 import type {
   DirectSessionListener,
@@ -50,6 +51,10 @@ type CreateSessionRuntimeOptions = {
   onStateChange?: (terminalId: string, state: AgentRuntimeState, toolName?: string) => void;
   onSessionStart?: (terminalId: string, details: TerminalSessionStartDetails) => void;
   onSessionEnd?: (terminalId: string, details: TerminalSessionEndDetails) => void;
+  appendAuditEvent?: (
+    eventType: AuditEventType,
+    options: { terminalId?: string; payload?: Record<string, unknown> },
+  ) => void;
 };
 
 const ANSI_BEL = String.fromCharCode(0x07);
@@ -73,6 +78,7 @@ export const createSessionRuntime = ({
   onStateChange,
   onSessionStart,
   onSessionEnd,
+  appendAuditEvent,
 }: CreateSessionRuntimeOptions) => {
   const DEFAULT_PTY_COLS = 120;
   const DEFAULT_PTY_ROWS = 35;
@@ -182,6 +188,13 @@ export const createSessionRuntime = ({
       type: "state_change",
       state: nextState,
       timestamp: new Date().toISOString(),
+    });
+    appendAuditEvent?.("session.state_changed", {
+      terminalId: sessionId,
+      payload: {
+        state: nextState,
+        ...(session.lastToolName ? { toolName: session.lastToolName } : {}),
+      },
     });
     onStateChange?.(sessionId, nextState, session.lastToolName);
     broadcastMessage(session, {
@@ -491,6 +504,10 @@ export const createSessionRuntime = ({
           session.isInitialPromptSent = true;
           appendDebugLog(session, `initial-prompt session=${sessionId}`);
           const prompt = session.initialPrompt ?? "";
+          appendAuditEvent?.("session.initial_prompt", {
+            terminalId: sessionId,
+            payload: { prompt },
+          });
           session.pty.write(`${BRACKETED_PASTE_START}${prompt}${BRACKETED_PASTE_END}`);
           schedulePromptTimer(
             session,
@@ -517,6 +534,10 @@ export const createSessionRuntime = ({
           session.isInitialInputDraftSent = true;
           appendDebugLog(session, `initial-input-draft session=${sessionId}`);
           const draft = session.initialInputDraft ?? "";
+          appendAuditEvent?.("session.initial_input_draft", {
+            terminalId: sessionId,
+            payload: { draft },
+          });
           session.pty.write(`${BRACKETED_PASTE_START}${draft}${BRACKETED_PASTE_END}`);
         },
         INITIAL_PROMPT_DELAY_MS,
@@ -545,6 +566,7 @@ export const createSessionRuntime = ({
 
     ensureNodePtySpawnHelperExecutable();
     const shellLaunch = getShellLaunch();
+    const channelCapability = terminalRecord ? terminalChannelCapability(terminalRecord) : null;
 
     let pty: IPty;
     try {
@@ -552,7 +574,11 @@ export const createSessionRuntime = ({
         cols: DEFAULT_PTY_COLS,
         rows: DEFAULT_PTY_ROWS,
         cwd: tentacleCwd,
-        env: createShellEnvironment({ octogentSessionId: sessionId }),
+        env: createShellEnvironment({
+          octogentSessionId: sessionId,
+          ...(terminalRecord?.agentId ? { octogentAgentId: terminalRecord.agentId } : {}),
+          ...(channelCapability ? { octogentChannelCapability: channelCapability } : {}),
+        }),
         name: "xterm-256color",
       });
     } catch (error) {
@@ -711,6 +737,13 @@ export const createSessionRuntime = ({
               session,
               `ws-input session=${sessionId} data=${JSON.stringify(payload.data)}`,
             );
+            appendAuditEvent?.("session.input", {
+              terminalId: sessionId,
+              payload: {
+                source: "websocket",
+                data: payload.data,
+              },
+            });
             session.pty.write(payload.data);
             if (/[\r\n]/.test(payload.data)) {
               emitStateIfChanged(
@@ -736,8 +769,24 @@ export const createSessionRuntime = ({
             session.cols = nextCols;
             session.rows = nextRows;
             session.pty.resize(nextCols, nextRows);
+            appendAuditEvent?.("session.input", {
+              terminalId: sessionId,
+              payload: {
+                source: "websocket",
+                action: "resize",
+                cols: nextCols,
+                rows: nextRows,
+              },
+            });
           }
         } catch {
+          appendAuditEvent?.("session.input", {
+            terminalId: sessionId,
+            payload: {
+              source: "websocket-raw",
+              data: text,
+            },
+          });
           session.pty.write(text);
         }
       });
@@ -825,6 +874,13 @@ export const createSessionRuntime = ({
     }
 
     session.pty.write(data);
+    appendAuditEvent?.("session.input", {
+      terminalId,
+      payload: {
+        source: "runtime",
+        data,
+      },
+    });
     if (/[\r\n]/.test(data)) {
       emitStateIfChanged(session, terminalId, session.stateTracker.observeSubmit(Date.now()));
     }

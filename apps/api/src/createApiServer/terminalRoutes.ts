@@ -1,6 +1,11 @@
 import { join } from "node:path";
+import { findAgentManifest } from "../agentManifests";
+import { findAgentRosterRole } from "../agentRoster";
+import { renderAutonomousSkillsSection } from "../autonomousSkills";
 import { readDeckTentacles } from "../deck/readDeckTentacles";
+import { renderGoalRuntimeSection } from "../goalRuntime";
 import { resolvePrompt } from "../prompts";
+import { renderRuntimePolicySection } from "../runtimePolicies";
 import {
   RuntimeInputError,
   type TentacleWorkspaceMode,
@@ -26,6 +31,7 @@ const buildTentacleInitialPrompt = (
   workspaceCwd: string,
   projectStateDir: string,
   tentacleId: string,
+  agentId?: string,
 ): Promise<string | undefined> => {
   const tentacle = readDeckTentacles(workspaceCwd, projectStateDir).find(
     (entry) => entry.tentacleId === tentacleId,
@@ -39,6 +45,13 @@ const buildTentacleInitialPrompt = (
     tentacleName: tentacle.displayName,
     tentacleId,
     tentacleContextPath: tentacleFolderPath,
+    autonomousSkillsSection: renderAutonomousSkillsSection(),
+    goalRuntimeSection: renderGoalRuntimeSection({
+      projectStateDir,
+      tentacleId,
+      ...(agentId ? { ownerAgentId: agentId } : {}),
+    }),
+    runtimePolicySection: renderRuntimePolicySection(),
   });
 };
 
@@ -57,6 +70,23 @@ export const handleTerminalSnapshotsRoute: ApiRouteHandler = async (
 
   const payload = runtime.listTerminalSnapshots();
   writeJson(response, 200, payload, corsOrigin);
+  return true;
+};
+
+export const handleAuditLogRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { runtime },
+) => {
+  if (requestUrl.pathname !== "/api/audit") {
+    return false;
+  }
+
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  writeJson(response, 200, { events: runtime.listAuditEvents() }, corsOrigin);
   return true;
 };
 
@@ -105,6 +135,7 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
   try {
     const createTerminalInput: {
       terminalId?: string;
+      agentId?: string;
       tentacleId?: string;
       worktreeId?: string;
       tentacleName?: string;
@@ -137,10 +168,75 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
     }
     if (
       bodyPayload &&
+      typeof bodyPayload.agentId === "string" &&
+      bodyPayload.agentId.trim().length > 0
+    ) {
+      const agentId = bodyPayload.agentId.trim();
+      createTerminalInput.agentId = agentId;
+    }
+    if (
+      bodyPayload &&
       typeof bodyPayload.tentacleId === "string" &&
       bodyPayload.tentacleId.trim().length > 0
     ) {
       createTerminalInput.tentacleId = bodyPayload.tentacleId.trim();
+    }
+    if (createTerminalInput.agentId) {
+      const role = findAgentRosterRole(createTerminalInput.agentId);
+      if (!role) {
+        writeJson(response, 400, { error: "Agent role not found." }, corsOrigin);
+        return true;
+      }
+      if (
+        createTerminalInput.tentacleId !== role.tentacleId ||
+        createTerminalInput.agentProvider !== role.preferredProvider
+      ) {
+        writeJson(
+          response,
+          400,
+          { error: "A role terminal must use that role's assigned provider and tentacle." },
+          corsOrigin,
+        );
+        return true;
+      }
+      const manifest = findAgentManifest(createTerminalInput.agentId);
+      if (!manifest) {
+        writeJson(
+          response,
+          409,
+          { error: "Agent role has no scoped policy manifest." },
+          corsOrigin,
+        );
+        return true;
+      }
+      if (
+        createTerminalInput.workspaceMode !== manifest.scope.workspaceMode ||
+        !createTerminalInput.tentacleId ||
+        !manifest.scope.tentacleIds.includes(createTerminalInput.tentacleId)
+      ) {
+        writeJson(
+          response,
+          400,
+          { error: "A role terminal must use that role's manifest workspace and tentacle scope." },
+          corsOrigin,
+        );
+        return true;
+      }
+      const existingRoleTerminal = runtime
+        .listTerminalSnapshots()
+        .find((snapshot) => snapshot.agentId === createTerminalInput.agentId);
+      if (existingRoleTerminal) {
+        writeJson(
+          response,
+          409,
+          {
+            error:
+              "This permanent role already has a prepared or active terminal. Release it before preparing another.",
+          },
+          corsOrigin,
+        );
+        return true;
+      }
     }
     if (
       bodyPayload &&
@@ -199,6 +295,22 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
         templateVars.userPromptsDir = userPromptsDir;
       }
 
+      // Auto-inject always-on operating skills so generated agents inherit them
+      // without the operator manually attaching Claude-specific skills.
+      if (!templateVars.autonomousSkillsSection) {
+        templateVars.autonomousSkillsSection = renderAutonomousSkillsSection();
+      }
+      if (!templateVars.goalRuntimeSection) {
+        templateVars.goalRuntimeSection = renderGoalRuntimeSection({
+          projectStateDir,
+          ...(createTerminalInput.tentacleId ? { tentacleId: createTerminalInput.tentacleId } : {}),
+          ...(createTerminalInput.agentId ? { ownerAgentId: createTerminalInput.agentId } : {}),
+        });
+      }
+      if (!templateVars.runtimePolicySection) {
+        templateVars.runtimePolicySection = renderRuntimePolicySection();
+      }
+
       // Auto-inject existingTerminals summary so planner-style prompts have context.
       if (!templateVars.existingTerminals) {
         const deckTentacles = readDeckTentacles(workspaceCwd, projectStateDir);
@@ -234,6 +346,7 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
         workspaceCwd,
         projectStateDir,
         createTerminalInput.tentacleId,
+        createTerminalInput.agentId,
       );
       if (defaultTentaclePrompt) {
         createTerminalInput.initialInputDraft = defaultTentaclePrompt;
@@ -258,7 +371,27 @@ export const handleTerminalsCollectionRoute: ApiRouteHandler = async (
 };
 
 const TERMINAL_ITEM_PATH_PATTERN = /^\/api\/terminals\/([^/]+)$/;
-const TERMINAL_ACTION_PATH_PATTERN = /^\/api\/terminals\/([^/]+)\/(stop|kill)$/;
+const TERMINAL_AUDIT_PATH_PATTERN = /^\/api\/terminals\/([^/]+)\/audit$/;
+const TERMINAL_ACTION_PATH_PATTERN = /^\/api\/terminals\/([^/]+)\/(start|stop|kill)$/;
+
+export const handleTerminalAuditRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { runtime },
+) => {
+  const auditMatch = requestUrl.pathname.match(TERMINAL_AUDIT_PATH_PATTERN);
+  if (!auditMatch) {
+    return false;
+  }
+
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  const terminalId = decodeURIComponent(auditMatch[1] ?? "");
+  writeJson(response, 200, { events: runtime.listAuditEvents(terminalId) }, corsOrigin);
+  return true;
+};
 
 export const handleTerminalItemRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
@@ -331,6 +464,25 @@ export const handleTerminalActionRoute: ApiRouteHandler = async (
 
   const terminalId = decodeURIComponent(actionMatch[1] ?? "");
   const action = actionMatch[2];
+  if (action === "start") {
+    const result = runtime.startTerminal(terminalId);
+    if (!result) {
+      writeJson(response, 404, { error: "Terminal not found." }, corsOrigin);
+      return true;
+    }
+    if (!result.started) {
+      writeJson(
+        response,
+        409,
+        { error: "Terminal could not start or is no longer prepared." },
+        corsOrigin,
+      );
+      return true;
+    }
+    writeJson(response, 200, result.snapshot, corsOrigin);
+    return true;
+  }
+
   const snapshot =
     action === "kill" ? runtime.killTerminal(terminalId) : runtime.stopTerminal(terminalId);
   if (!snapshot) {

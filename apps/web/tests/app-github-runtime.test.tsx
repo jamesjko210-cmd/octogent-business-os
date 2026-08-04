@@ -73,6 +73,14 @@ const mockGithubRuntimeRequests = () => {
       });
     }
 
+    if (url.endsWith("/api/github/publish-readiness") && method === "GET") {
+      return jsonResponse({
+        status: "needs_user_remote",
+        origin: "https://github.com/hesamsheikh/octogent.git",
+        message: "Publishing is blocked until a user-owned remote is configured.",
+      });
+    }
+
     if (url.endsWith("/api/ui-state") && method === "GET") {
       return jsonResponse({});
     }
@@ -118,6 +126,8 @@ describe("App GitHub runtime views", () => {
     ).toBeInTheDocument();
     expect(within(githubView).getByText("Recent commits")).toBeInTheDocument();
     expect(within(githubView).getByText("Showing last 50")).toBeInTheDocument();
+    expect(within(githubView).getByText("Publishing readiness")).toBeInTheDocument();
+    expect(within(githubView).getByText("Publish blocked")).toBeInTheDocument();
     expect(within(githubView).getByText("recent commit 1")).toBeInTheDocument();
     expect(within(githubView).getByText("recent commit 50")).toBeInTheDocument();
     expect(within(githubView).getAllByRole("listitem")).toHaveLength(50);

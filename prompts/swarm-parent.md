@@ -15,6 +15,12 @@ NEVER do the workers' tasks yourself. If a worker is struggling, send guidance â
 NEVER merge a branch you haven't reviewed the diff for.
 NEVER declare the swarm complete while any worker is still BLOCKED or hasn't reported status.
 
+{{autonomousSkillsSection}}
+
+{{goalRuntimeSection}}
+
+{{runtimePolicySection}}
+
 ## Worker Agents
 
 {{workerListing}}

@@ -8,6 +8,8 @@ A child agent is a normal terminal record with `parentTerminalId` set. The relat
 
 Deck creates child agents from todo items by resolving prompt templates. The prompt receives the tentacle name, tentacle ID, path to `.octogent/tentacles/<tentacle-id>/`, todo text, terminal ID, API port, workspace guidance, and parent terminal ID when a parent exists.
 
+Child agents use the provider selected for the swarm. A Codex, Gemini CLI, Perplexity Research, Qwen/LM Studio, Notion, Google Stitch, Antigravity, or custom parent will generate child terminal commands with the same `--agent-provider` value so workers stay on the requested tool family. Research swarms are the exception: if no provider is selected, Octogent routes each research prompt to Claude, Gemini, or Perplexity based on the prompt intent.
+
 ## When to use child agents
 
 Use child agents when:
@@ -49,7 +51,7 @@ In worktree mode, each worker gets a branch named `octogent/<worker-terminal-id>
 
 ## Parent coordinator behavior
 
-When a swarm has more than one target item, Octogent creates a parent terminal like `<tentacle-id>-swarm-parent`. The parent prompt contains:
+When a swarm has more than one target item, Octogent creates a parent terminal like `<tentacle-id>-swarm-parent`. Named swarms use a namespaced parent such as `<tentacle-id>-swarm-business-parent`, which lets separate business, research, or coding swarms run against the same tentacle at the same time. The parent prompt contains:
 
 - the list of worker terminal IDs and assigned todo indices
 - commands for creating each worker terminal
@@ -63,12 +65,12 @@ The parent is intentionally not a magic scheduler. It is an agent session with e
 
 Each parent can have up to 9 child terminals. If a swarm has more incomplete todo items than that, Octogent uses todo order as priority order and defers the overflow.
 
-Worker terminal IDs are derived from the tentacle ID and todo index. That makes duplicate detection simple: Octogent refuses to start a second active solve or swarm for the same item pattern.
+Worker terminal IDs are derived from the tentacle ID, optional swarm namespace, and todo index. Duplicate detection is scoped to the namespace: Octogent refuses to start a second `business` swarm for the same tentacle, while allowing a separate `research` swarm to run beside it.
 
 ## Limits
 
 - PTY sessions do not survive API restarts
-- channel messages are in-memory only
+- channel messages persist across API restarts, but important decisions still belong in tentacle files
 - delegation quality depends on the quality of `CONTEXT.md` and `todo.md`
 - shared-mode workers can still collide in files, because shared mode is not git isolation
 - worktree-mode workers still need a human or parent merge step before their work reaches the base branch

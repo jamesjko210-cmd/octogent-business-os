@@ -112,6 +112,78 @@ const parseTentacleState = (raw: unknown): DeckTentacleState => {
   return { color, status, octopus, scope };
 };
 
+const RESEARCH_WORKFLOW_STAGES = [
+  {
+    id: "scout",
+    label: "Scout",
+    keywords: ["perplexity", "scout", "current", "latest", "citations", "market"],
+  },
+  {
+    id: "source-review",
+    label: "Source Review",
+    keywords: ["notebooklm", "notebook lm", "source-grounded", "curated", "selected sources"],
+  },
+  {
+    id: "memory",
+    label: "Memory",
+    keywords: ["notion", "brief", "source index", "decision", "decisions", "memory", "tasks"],
+  },
+  {
+    id: "strategy",
+    label: "Strategy",
+    keywords: ["claude", "synthesize", "strategy", "recommendation", "positioning", "bmc"],
+  },
+  {
+    id: "execution",
+    label: "Execution",
+    keywords: ["codex", "execute", "implementation", "prototype", "build", "test"],
+  },
+] as const;
+
+const inferResearchWorkflow = ({
+  tentacleId,
+  displayName,
+  description,
+  todoItems,
+}: {
+  tentacleId: string;
+  displayName: string;
+  description: string;
+  todoItems: { text: string; done: boolean }[];
+}): DeckTentacleSummary["researchWorkflow"] => {
+  const haystack = [tentacleId, displayName, description, ...todoItems.map((item) => item.text)]
+    .join(" ")
+    .toLowerCase();
+  const isResearchWorkflow =
+    /\bresearch\b/.test(haystack) ||
+    haystack.includes("perplexity") ||
+    haystack.includes("notebooklm") ||
+    haystack.includes("notebook lm") ||
+    haystack.includes("source-grounded");
+  if (!isResearchWorkflow) return null;
+
+  const stages = RESEARCH_WORKFLOW_STAGES.map((stage) => {
+    const matchingItems = todoItems.filter((item) => {
+      const text = item.text.toLowerCase();
+      return stage.keywords.some((keyword) => text.includes(keyword));
+    });
+    const done = matchingItems.length > 0 && matchingItems.every((item) => item.done);
+    return {
+      id: stage.id,
+      label: stage.label,
+      done,
+      active: !done && matchingItems.some((item) => !item.done),
+    };
+  });
+  const activeStage = stages.find((stage) => stage.active);
+  const firstIncompleteStage = stages.find((stage) => !stage.done);
+
+  return {
+    stage: activeStage?.id ?? firstIncompleteStage?.id ?? "complete",
+    stages,
+  };
+};
+
 // ─── Parse CONTEXT.md for title and description ───────────────────────────────
 
 const parseContextMd = (
@@ -150,6 +222,7 @@ export const parseTodoProgress = (
   let total = 0;
   let done = 0;
   const items: { text: string; done: boolean }[] = [];
+  let currentItem: { text: string; done: boolean } | null = null;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -159,14 +232,29 @@ export const parseTodoProgress = (
     if (checkedMatch) {
       total++;
       done++;
-      items.push({ text: checkedMatch[1] as string, done: true });
+      currentItem = { text: checkedMatch[1] as string, done: true };
+      items.push(currentItem);
     } else if (uncheckedMatch) {
       total++;
-      items.push({ text: uncheckedMatch[1] as string, done: false });
+      currentItem = { text: uncheckedMatch[1] as string, done: false };
+      items.push(currentItem);
+    } else if (currentItem && /^\s{2,}\S/.test(line)) {
+      currentItem.text = `${currentItem.text}\n${trimmed}`;
+    } else if (trimmed.length > 0) {
+      currentItem = null;
     }
   }
 
   return { total, done, items };
+};
+
+const formatTodoItemLines = (checkbox: string, text: string, indent = "") => {
+  const lines = text.trim().split(/\r?\n/);
+  const [firstLine = ""] = lines;
+  return [
+    `${indent}${checkbox} ${firstLine.trim()}`,
+    ...lines.slice(1).map((line) => `${indent}  ${line.trim()}`),
+  ];
 };
 
 // ─── Read all tentacles ─────────────────────────────────────────────────────
@@ -252,6 +340,12 @@ export const readDeckTentacles = (
       todoTotal,
       todoDone,
       todoItems,
+      researchWorkflow: inferResearchWorkflow({
+        tentacleId: entry,
+        displayName: agentInfo.displayName,
+        description: agentInfo.description,
+        todoItems,
+      }),
       suggestedSkills: agentInfo.suggestedSkills,
     });
   }
@@ -363,7 +457,7 @@ export const editTodoItem = (
     if (match) {
       if (todoIndex === itemIndex) {
         const indent = (lines[i] as string).match(/^(\s*)/)?.[1] ?? "";
-        lines[i] = `${indent}${match[1]} ${text}`;
+        lines.splice(i, 1, ...formatTodoItemLines(match[1] as string, text, indent));
         edited = true;
         break;
       }
@@ -404,7 +498,7 @@ export const addTodoItem = (
   }
 
   const trimmed = content.endsWith("\n") ? content : `${content}\n`;
-  const updated = `${trimmed}- [ ] ${text}\n`;
+  const updated = `${trimmed}${formatTodoItemLines("- [ ]", text).join("\n")}\n`;
 
   try {
     writeFileSync(filePath, updated, "utf-8");
@@ -533,6 +627,12 @@ export const createDeckTentacle = (
       todoTotal: 0,
       todoDone: 0,
       todoItems: [],
+      researchWorkflow: inferResearchWorkflow({
+        tentacleId: name,
+        displayName: name,
+        description,
+        todoItems: [],
+      }),
       suggestedSkills,
     },
   };

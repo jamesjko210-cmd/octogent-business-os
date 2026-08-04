@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { WorkspaceSetupSnapshot, WorkspaceSetupStepId } from "@octogent/core";
 import {
@@ -72,7 +72,11 @@ type CanvasPrimaryViewProps = {
   onCreateTerminal?: () => Promise<string | undefined> | undefined;
   onCreateWorktreeTerminal?: () => Promise<string | undefined> | undefined;
   onCreateTentacle?: () => void;
-  onSpawnSwarm?: (tentacleId: string, workspaceMode: TerminalWorkspaceMode) => Promise<void>;
+  onSpawnSwarm?: (
+    tentacleId: string,
+    workspaceMode: TerminalWorkspaceMode,
+    swarmId?: string,
+  ) => Promise<void>;
   onSolveTodoItem?: (tentacleId: string, itemIndex: number) => Promise<void> | void;
   onOctobossAction?: (action: string) => Promise<string | undefined> | undefined;
   onTentacleAction?: (
@@ -99,6 +103,15 @@ const CLICK_THRESHOLD = 5;
 const GRAPH_MIN_WIDTH = 300;
 const TERMINAL_MIN_WIDTH = 370;
 const ACTIVE_SESSION_RADIUS = 12;
+const CANVAS_FORCE_PARAMS = {
+  ...DEFAULT_FORCE_PARAMS,
+  repelStrength: -950,
+  repelDistanceMax: 1100,
+  linkDistance: 240,
+  linkStrength: 0.42,
+  positionStrength: 0.018,
+  collisionPadding: 110,
+};
 const buildActiveSessionNodeId = (terminalId: string) => `a:${terminalId}`;
 const buildTentacleNodeId = (tentacleId: string) => `t:${tentacleId}`;
 
@@ -238,7 +251,8 @@ export const CanvasPrimaryView = ({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [terminalsPanelWidth, setTerminalsPanelWidth] = useState<number | null>(null);
   const [pendingOpenAgentId, setPendingOpenAgentId] = useState<string | null>(null);
-  const [hideIdleTerminals, setHideIdleTerminals] = useState(false);
+  const [hideIdleTerminals, setHideIdleTerminals] = useState(true);
+  const [showStageRoster, setShowStageRoster] = useState(true);
   const [isLaunchingWorkspaceSetupPlanner, setIsLaunchingWorkspaceSetupPlanner] = useState(false);
   const hasHydratedTerminals = useRef(false);
   const hasHydratedTentacles = useRef(false);
@@ -280,7 +294,40 @@ export const CanvasPrimaryView = ({
     edges,
     centerX: 0,
     centerY: 0,
+    params: CANVAS_FORCE_PARAMS,
   });
+  const autoFitRef = useRef<{ key: string | null; passes: number }>({ key: null, passes: 0 });
+  const canvasTopologyKey = useMemo(
+    () =>
+      simulatedNodes
+        .map((node) => node.id)
+        .sort()
+        .join("|"),
+    [simulatedNodes],
+  );
+
+  useEffect(() => {
+    if (simulatedNodes.length === 0) {
+      return;
+    }
+
+    if (autoFitRef.current.key !== canvasTopologyKey) {
+      autoFitRef.current = { key: canvasTopologyKey, passes: 0 };
+    }
+
+    if (autoFitRef.current.passes >= 8) {
+      return;
+    }
+
+    autoFitRef.current.passes += 1;
+    const rafId = window.requestAnimationFrame(() => {
+      fitAll(simulatedNodes);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [canvasTopologyKey, fitAll, simulatedNodes]);
 
   const nodesById = useMemo(() => {
     const map = new Map<string, GraphNode>();
@@ -754,9 +801,9 @@ export const CanvasPrimaryView = ({
   );
 
   const handleSpawnSwarm = useCallback(
-    (tentacleId: string, workspaceMode: TerminalWorkspaceMode) => {
+    (tentacleId: string, workspaceMode: TerminalWorkspaceMode, swarmId?: string) => {
       setContextMenu(null);
-      void onSpawnSwarm?.(tentacleId, workspaceMode);
+      void onSpawnSwarm?.(tentacleId, workspaceMode, swarmId);
     },
     [onSpawnSwarm],
   );
@@ -883,6 +930,14 @@ export const CanvasPrimaryView = ({
       return false;
     return true;
   });
+  const stageNodes = useMemo(
+    () => [
+      ...tentacleNodes.filter((node) => node.type === "octoboss"),
+      ...tentacleNodes.filter((node) => node.type !== "octoboss"),
+      ...sessionNodes,
+    ],
+    [sessionNodes, tentacleNodes],
+  );
 
   const handleFitView = useCallback(() => {
     fitAll(simulatedNodes);
@@ -1080,6 +1135,93 @@ export const CanvasPrimaryView = ({
           </g>
         </svg>
 
+        {!hasPanels && showStageRoster && stageNodes.length > 0 && (
+          <div className="canvas-stage-roster" aria-label="Agent stage roster">
+            <button
+              type="button"
+              className="canvas-stage-close"
+              aria-label="Close agent stage and show floating map"
+              onClick={() => setShowStageRoster(false)}
+            >
+              <X size={18} />
+            </button>
+            {stageNodes.map((node) => {
+              const tentacle = node.type === "tentacle" ? tentacleById.get(node.tentacleId) : null;
+              const sessionCount =
+                node.type === "tentacle"
+                  ? (sessionsByTentacleId.get(node.tentacleId)?.length ?? 0)
+                  : null;
+              const todoProgress =
+                tentacle && tentacle.todoTotal > 0
+                  ? `${tentacle.todoDone}/${tentacle.todoTotal} done`
+                  : node.type === "octoboss"
+                    ? "Coordinator"
+                    : (node.agentState ?? "terminal");
+              const researchWorkflow = tentacle?.researchWorkflow ?? null;
+              const description =
+                tentacle?.description ||
+                (node.type === "octoboss"
+                  ? "Coordinates the whole Octogent system"
+                  : node.firstPromptPreview || node.label);
+              const terminalSecurity =
+                node.type === "active-session"
+                  ? columns.find((terminal) => terminal.terminalId === node.sessionId)
+                  : null;
+              const hasSealedIdentity = Boolean(terminalSecurity?.agentIdentity);
+              const accessMode = terminalSecurity?.accessScope?.workspaceMode;
+
+              return (
+                <button
+                  key={`stage-${node.id}`}
+                  type="button"
+                  className={`canvas-stage-card canvas-stage-card--${node.type}`}
+                  style={{ "--stage-agent-color": node.color } as CSSProperties}
+                  onClick={() => {
+                    handleNodeClick(node.id);
+                  }}
+                >
+                  <span className="canvas-stage-card-orb" aria-hidden="true" />
+                  <span className="canvas-stage-card-kicker">
+                    {node.type === "octoboss"
+                      ? "Octoboss"
+                      : node.type === "tentacle"
+                        ? "Tentacle"
+                        : node.type === "active-session"
+                          ? "Live agent"
+                          : "Idle agent"}
+                  </span>
+                  <span className="canvas-stage-card-title">{node.label}</span>
+                  <span className="canvas-stage-card-desc">{description}</span>
+                  <span className="canvas-stage-card-meta">
+                    <span>{todoProgress}</span>
+                    {researchWorkflow && <span>{researchWorkflow.stage}</span>}
+                    {sessionCount !== null && <span>{sessionCount} sessions</span>}
+                    {hasSealedIdentity && <span>sealed identity</span>}
+                    {accessMode && <span>{accessMode} scope</span>}
+                  </span>
+                  {researchWorkflow && (
+                    <span
+                      className="canvas-research-stage-strip"
+                      aria-label={`Research workflow stage: ${researchWorkflow.stage}`}
+                    >
+                      {researchWorkflow.stages.map((stage) => (
+                        <span
+                          key={`${node.id}-${stage.id}`}
+                          className="canvas-research-stage-pill"
+                          data-active={stage.active ? "true" : "false"}
+                          data-done={stage.done ? "true" : "false"}
+                        >
+                          {stage.label}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Canvas toolbar — top-left action buttons */}
         <div className="canvas-toolbar" role="toolbar" aria-label="Canvas actions">
           <button
@@ -1121,6 +1263,18 @@ export const CanvasPrimaryView = ({
               <Hexagon size={14} />
             </span>
             <span className="canvas-toolbar-label">Tentacle</span>
+          </button>
+          <div className="canvas-toolbar-separator" />
+          <button
+            type="button"
+            className={`canvas-toolbar-btn${showStageRoster ? " canvas-toolbar-btn--active" : ""}`}
+            aria-pressed={showStageRoster}
+            onClick={() => setShowStageRoster((prev) => !prev)}
+          >
+            <span className="canvas-toolbar-icon">
+              {showStageRoster ? <X size={14} /> : <Layers size={14} />}
+            </span>
+            <span className="canvas-toolbar-label">{showStageRoster ? "Map" : "Stage"}</span>
           </button>
           <div className="canvas-toolbar-separator" />
           <button type="button" className="canvas-toolbar-btn" onClick={handleFitView}>
@@ -1241,8 +1395,8 @@ export const CanvasPrimaryView = ({
                 onSolveTodoItem={(tentacleId, itemIndex) => {
                   void onSolveTodoItem?.(tentacleId, itemIndex);
                 }}
-                onSpawnSwarm={(tentacleId, workspaceMode) => {
-                  handleSpawnSwarm(tentacleId, workspaceMode);
+                onSpawnSwarm={(tentacleId, workspaceMode, swarmId) => {
+                  handleSpawnSwarm(tentacleId, workspaceMode, swarmId);
                 }}
                 onNavigateToConversation={onNavigateToConversation}
                 onRefreshTentacleData={refreshDeckTentacles}

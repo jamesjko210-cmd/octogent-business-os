@@ -120,7 +120,8 @@ export const parseTerminalAgentProvider = (payload: unknown) => {
   if (!isTerminalAgentProvider(rawAgentProvider)) {
     return {
       agentProvider: undefined as TerminalAgentProvider | undefined,
-      error: "Terminal agent provider must be either 'codex' or 'claude-code'.",
+      error:
+        "Terminal agent provider must be one of: 'codex', 'claude-code', 'gemini-cli', 'perplexity', 'notebooklm', 'lm-studio', 'notion', 'stitch', 'antigravity', or 'custom'.",
     };
   }
 

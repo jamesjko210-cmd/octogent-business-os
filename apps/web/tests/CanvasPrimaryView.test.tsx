@@ -48,6 +48,36 @@ const nodes: MockCanvasNode[] = [
   },
 ];
 
+const researchTentacle = {
+  tentacleId: "tentacle-a",
+  displayName: "Game Research",
+  description: "Research lane",
+  status: "idle" as const,
+  color: "#ff6b2b",
+  octopus: {
+    animation: null,
+    expression: null,
+    accessory: null,
+    hairColor: null,
+  },
+  scope: { paths: [], tags: [] },
+  vaultFiles: ["todo.md"],
+  todoTotal: 5,
+  todoDone: 1,
+  todoItems: [],
+  researchWorkflow: {
+    stage: "source-review" as const,
+    stages: [
+      { id: "scout" as const, label: "Scout", done: true, active: false },
+      { id: "source-review" as const, label: "Source Review", done: false, active: true },
+      { id: "memory" as const, label: "Memory", done: false, active: false },
+      { id: "strategy" as const, label: "Strategy", done: false, active: false },
+      { id: "execution" as const, label: "Execution", done: false, active: false },
+    ],
+  },
+  suggestedSkills: [],
+};
+
 vi.mock("../src/app/hooks/useAgentRuntimeStates", () => ({
   useAgentRuntimeStates: () => new Map(),
 }));
@@ -56,7 +86,7 @@ vi.mock("../src/app/hooks/useCanvasGraphData", () => ({
   useCanvasGraphData: () => ({
     nodes,
     edges: [],
-    tentacleById: new Map(),
+    tentacleById: new Map([["tentacle-a", researchTentacle]]),
     sessionsByTentacleId: new Map(),
     refresh: vi.fn(),
     refreshDeckTentacles: vi.fn(),
@@ -194,6 +224,50 @@ describe("CanvasPrimaryView", () => {
       expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
       expect(HTMLElement.prototype.focus).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("hides unprompted idle workers by default and lets the operator reveal them", () => {
+    const idleNode = nodes[1];
+    if (!idleNode) throw new Error("Missing idle worker fixture");
+    idleNode.hasUserPrompt = false;
+
+    try {
+      render(<CanvasPrimaryView columns={[]} isUiStateHydrated />);
+
+      expect(screen.queryByRole("button", { name: "terminal-1" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Show Idle" }));
+      expect(screen.getByRole("button", { name: "terminal-1" })).toBeInTheDocument();
+    } finally {
+      idleNode.hasUserPrompt = true;
+    }
+  });
+
+  it("toggles between the full-stage roster and floating map", async () => {
+    render(<CanvasPrimaryView columns={[]} isUiStateHydrated />);
+
+    expect(screen.getByLabelText("Agent stage roster")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close agent stage and show floating map" }),
+    );
+
+    expect(screen.queryByLabelText("Agent stage roster")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Canvas graph")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Stage" }));
+
+    expect(screen.getByLabelText("Agent stage roster")).toBeInTheDocument();
+  });
+
+  it("shows research workflow stages on research tentacle cards", async () => {
+    render(<CanvasPrimaryView columns={[]} isUiStateHydrated />);
+
+    expect(screen.getByLabelText("Research workflow stage: source-review")).toBeInTheDocument();
+    expect(screen.getByText("Scout")).toBeInTheDocument();
+    expect(screen.getByText("Source Review")).toBeInTheDocument();
+    expect(screen.getByText("Memory")).toBeInTheDocument();
+    expect(screen.getByText("Strategy")).toBeInTheDocument();
+    expect(screen.getByText("Execution")).toBeInTheDocument();
   });
 
   it("minimizes a terminal panel separately from closing the terminal session", async () => {

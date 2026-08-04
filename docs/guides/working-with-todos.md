@@ -54,11 +54,11 @@ The Deck runtime uses the same parsed list for three different workflows:
 
 For a single-item solve, Octogent creates a terminal ID like `<tentacle-id>-todo-<item-index>` and starts a shared-workspace worker prompt for that item.
 
-For a swarm, Octogent filters incomplete items, optionally narrows them to requested indices, caps the batch at the parent-child limit, then creates worker IDs like `<tentacle-id>-swarm-<item-index>`. If there is more than one worker, it creates a parent coordinator terminal instead of starting all workers directly from the API. The parent prompt contains the worker creation commands and completion strategy.
+For a swarm, Octogent filters incomplete items, optionally narrows them to requested indices, caps the batch at the parent-child limit, then creates worker IDs like `<tentacle-id>-swarm-<item-index>`. If `swarmId` or `swarmName` is provided, the namespace is included in the IDs, for example `<tentacle-id>-swarm-business-<item-index>`. If there is more than one worker, it creates a parent coordinator terminal instead of starting all workers directly from the API. The parent prompt contains the worker creation commands and completion strategy.
 
 ## Editing and drift
 
-When the UI toggles, edits, adds, or deletes a todo, it rewrites `todo.md`. Manual edits are also valid, but they can change item indices. Avoid reordering todos while a solve agent or swarm is active unless the coordinator knows about the change.
+When the UI toggles, edits, adds, or deletes a todo, it rewrites `todo.md`. Manual edits are also valid, but they can change item indices. Avoid reordering todos while a solve agent or any named swarm is active unless the coordinator knows about the change.
 
 Workers should not mark their own item done unless the assigned task explicitly requires it. In the swarm flow, the coordinator or human reviewer should update `todo.md` after reviewing the combined result.
 

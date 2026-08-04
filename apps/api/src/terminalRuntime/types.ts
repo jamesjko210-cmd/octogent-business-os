@@ -14,6 +14,7 @@ import type { IPty } from "node-pty";
 import type { WebSocket } from "ws";
 
 import type { AgentRuntimeState, AgentStateTracker } from "../agentStateDetection";
+import type { PersistedTerminalSecurity } from "./security";
 
 export type TerminalStateMessage = {
   type: "state";
@@ -119,6 +120,7 @@ export type TerminalSessionEndDetails = {
 
 export type PersistedTerminal = {
   terminalId: string;
+  agentId?: string;
   tentacleId: string;
   worktreeId?: string;
   tentacleName: string;
@@ -139,6 +141,7 @@ export type PersistedTerminal = {
   endedAt?: string | undefined;
   exitCode?: number | undefined;
   exitSignal?: number | string | undefined;
+  security?: PersistedTerminalSecurity | undefined;
 };
 
 export type GitClientPullRequestSnapshot = Omit<

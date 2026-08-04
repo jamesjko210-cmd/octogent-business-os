@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
 import { TENTACLE_WORKTREE_BRANCH_PREFIX, TENTACLE_WORKTREE_RELATIVE_PATH } from "./constants";
 import { toErrorMessage } from "./systemClients";
@@ -38,10 +38,17 @@ export const createWorktreeManager = ({
   gitClient,
   terminals,
 }: CreateWorktreeManagerOptions) => {
-  const getTentacleWorktreePath = (tentacleId: string) =>
-    join(workspaceCwd, TENTACLE_WORKTREE_RELATIVE_PATH, tentacleId);
+  const worktreesRoot = resolve(workspaceCwd, TENTACLE_WORKTREE_RELATIVE_PATH);
+  const getTentacleWorktreePath = (tentacleId: string) => resolve(worktreesRoot, tentacleId);
   const getTentacleBranchName = (tentacleId: string) =>
     `${TENTACLE_WORKTREE_BRANCH_PREFIX}${tentacleId}`;
+
+  const assertContainedWorktreePath = (tentacleId: string, worktreePath: string) => {
+    const relativePath = relative(worktreesRoot, worktreePath);
+    if (relativePath.length === 0 || relativePath.startsWith("..") || isAbsolute(relativePath)) {
+      throw new RuntimeInputError(`Invalid worktree identifier: ${tentacleId}`);
+    }
+  };
 
   const getTentacleWorkspaceCwd = (worktreeIdentifier: string) => {
     const terminal = findTerminalForWorktree(terminals, worktreeIdentifier);
@@ -68,6 +75,7 @@ export const createWorktreeManager = ({
   const createTentacleWorktree = (tentacleId: string, baseRef = "HEAD") => {
     assertWorktreeCreationSupported();
     const worktreePath = getTentacleWorktreePath(tentacleId);
+    assertContainedWorktreePath(tentacleId, worktreePath);
     if (existsSync(worktreePath)) {
       throw new RuntimeInputError(`Worktree path already exists: ${worktreePath}`);
     }

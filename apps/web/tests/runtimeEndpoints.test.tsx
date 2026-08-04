@@ -1,15 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAgentRosterUrl,
+  buildAllChannelMessagesUrl,
+  buildChannelMessagesUrl,
   buildClaudeUsageUrl,
   buildCodexUsageUrl,
   buildConversationExportUrl,
   buildConversationSessionUrl,
   buildConversationsUrl,
   buildGithubSummaryUrl,
+  buildMemoryUrl,
   buildMonitorConfigUrl,
   buildMonitorFeedUrl,
   buildMonitorRefreshUrl,
+  buildOperatorUpdatesUrl,
+  buildTelegramStatusUrl,
   buildTentacleGitCommitUrl,
   buildTentacleGitPullRequestMergeUrl,
   buildTentacleGitPullRequestUrl,
@@ -22,11 +28,44 @@ import {
   buildTerminalSocketUrl,
   buildTerminalsUrl,
   buildUiStateUrl,
+  buildWorkflowRunClaimUrl,
+  buildWorkflowRunLocalExecutionUrl,
   buildWorkspaceSetupStepUrl,
   buildWorkspaceSetupUrl,
 } from "../src/runtime/runtimeEndpoints";
 
 describe("runtimeEndpoints", () => {
+  it("builds the workflow claim URL", () => {
+    expect(buildWorkflowRunClaimUrl("workflow-game-qa-balance", "run-1")).toBe(
+      "/api/workflows/workflow-game-qa-balance/runs/run-1/claim",
+    );
+    expect(
+      buildWorkflowRunClaimUrl("workflow-game-qa-balance", "run-1", "https://runtime.example.com"),
+    ).toBe("https://runtime.example.com/api/workflows/workflow-game-qa-balance/runs/run-1/claim");
+  });
+
+  it("builds the fixed local workflow execution URL", () => {
+    expect(buildWorkflowRunLocalExecutionUrl("workflow-game-qa-balance", "run-1")).toBe(
+      "/api/workflows/workflow-game-qa-balance/runs/run-1/execute-local",
+    );
+    expect(
+      buildWorkflowRunLocalExecutionUrl(
+        "workflow-game-qa-balance",
+        "run-1",
+        "https://runtime.example.com",
+      ),
+    ).toBe(
+      "https://runtime.example.com/api/workflows/workflow-game-qa-balance/runs/run-1/execute-local",
+    );
+  });
+
+  it("builds agent roster URL on same origin and configured runtime origins", () => {
+    expect(buildAgentRosterUrl()).toBe("/api/agents");
+    expect(buildAgentRosterUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/agents",
+    );
+  });
+
   it("returns same-origin API path when runtime base URL is not configured", () => {
     expect(buildTerminalSnapshotsUrl()).toBe("/api/terminal-snapshots");
   });
@@ -91,6 +130,10 @@ describe("runtimeEndpoints", () => {
 
   it("builds conversations URLs on same origin by default", () => {
     expect(buildConversationsUrl()).toBe("/api/conversations");
+    expect(buildAllChannelMessagesUrl()).toBe("/api/channels");
+    expect(buildTelegramStatusUrl()).toBe("/api/telegram/status");
+    expect(buildOperatorUpdatesUrl()).toBe("/api/operator-updates");
+    expect(buildChannelMessagesUrl("terminal-1")).toBe("/api/channels/terminal-1/messages");
     expect(buildConversationSessionUrl("tentacle-1-root")).toBe(
       "/api/conversations/tentacle-1-root",
     );
@@ -102,9 +145,31 @@ describe("runtimeEndpoints", () => {
     );
   });
 
+  it("builds memory URLs with optional local search filters", () => {
+    expect(buildMemoryUrl()).toBe("/api/memory");
+    expect(buildMemoryUrl({ query: "role handoff", tentacleId: "game-business" })).toBe(
+      "/api/memory?query=role+handoff&tentacleId=game-business",
+    );
+    expect(buildMemoryUrl({ query: "research" }, "https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/memory?query=research",
+    );
+  });
+
   it("builds absolute conversations URLs when runtime base URL is configured", () => {
     expect(buildConversationsUrl("https://runtime.example.com")).toBe(
       "https://runtime.example.com/api/conversations",
+    );
+    expect(buildChannelMessagesUrl("terminal-1", "https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/channels/terminal-1/messages",
+    );
+    expect(buildAllChannelMessagesUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/channels",
+    );
+    expect(buildTelegramStatusUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/telegram/status",
+    );
+    expect(buildOperatorUpdatesUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/operator-updates",
     );
     expect(buildConversationSessionUrl("tentacle-1-root", "https://runtime.example.com")).toBe(
       "https://runtime.example.com/api/conversations/tentacle-1-root",

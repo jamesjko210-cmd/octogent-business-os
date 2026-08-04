@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -34,6 +35,10 @@ mkdirSync(binDir, { recursive: true });
 mkdirSync(npmCacheDir, { recursive: true });
 
 const canonicalWorkspaceDir = realpathSync(workspaceDir);
+const ephemeralProjectId = `workspace-${createHash("sha1")
+  .update(canonicalWorkspaceDir)
+  .digest("hex")
+  .slice(0, 16)}`;
 
 const runtimeEnv = {
   ...process.env,
@@ -42,6 +47,8 @@ const runtimeEnv = {
 };
 const npmEnv = {
   ...process.env,
+  HOME: homeDir,
+  npm_config_cache: npmCacheDir,
   npm_config_logs_dir: join(npmCacheDir, "_logs"),
 };
 
@@ -150,37 +157,49 @@ const main = async () => {
       stderr += chunk.toString();
     });
 
-    const runtimeMetadataPath = join(homeDir, ".octogent", "projects");
+    const runtimeMetadataPath = join(
+      homeDir,
+      ".octogent",
+      "projects",
+      ephemeralProjectId,
+      "state",
+      "runtime.json",
+    );
 
     for (let attempt = 0; attempt < 80; attempt += 1) {
       if (serverProcess.exitCode !== null) {
         break;
       }
 
-      const projectConfigPath = join(workspaceDir, ".octogent", "project.json");
-      if (existsSync(projectConfigPath)) {
-        const projectConfig = JSON.parse(readFileSync(projectConfigPath, "utf8"));
-        const candidateRuntimePath = join(
-          runtimeMetadataPath,
-          projectConfig.projectId,
-          "state",
-          "runtime.json",
-        );
-
-        if (existsSync(candidateRuntimePath)) {
-          const runtimeMetadata = JSON.parse(readFileSync(candidateRuntimePath, "utf8"));
-          try {
-            const response = await fetch(runtimeMetadata.apiBaseUrl);
-            if (response.ok) {
-              const html = await response.text();
-              if (!html.includes("<title>Octogent</title>")) {
-                throw new Error("Packaged UI responded, but the returned HTML was not Octogent.");
-              }
-              break;
+      if (existsSync(runtimeMetadataPath)) {
+        const runtimeMetadata = JSON.parse(readFileSync(runtimeMetadataPath, "utf8"));
+        try {
+          const response = await fetch(runtimeMetadata.apiBaseUrl);
+          if (response.ok) {
+            const html = await response.text();
+            if (!html.includes("<title>Octogent</title>")) {
+              throw new Error("Packaged UI responded, but the returned HTML was not Octogent.");
             }
-          } catch {
-            // Server may still be binding even after runtime metadata is written.
+            const initializeResponse = await fetch(
+              `${runtimeMetadata.apiBaseUrl}/api/setup/steps/initialize-workspace`,
+              { method: "POST" },
+            );
+            if (!initializeResponse.ok) {
+              throw new Error(
+                `Workspace initialization returned HTTP ${initializeResponse.status}.`,
+              );
+            }
+            const gitignoreResponse = await fetch(
+              `${runtimeMetadata.apiBaseUrl}/api/setup/steps/ensure-gitignore`,
+              { method: "POST" },
+            );
+            if (!gitignoreResponse.ok) {
+              throw new Error(`Gitignore setup returned HTTP ${gitignoreResponse.status}.`);
+            }
+            break;
           }
+        } catch {
+          // Server may still be binding even after runtime metadata is written.
         }
       }
 

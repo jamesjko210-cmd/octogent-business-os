@@ -26,6 +26,7 @@ describe("TentaclePod skill editor", () => {
           todoTotal: 0,
           todoDone: 0,
           todoItems: [],
+          researchWorkflow: null,
           suggestedSkills: ["docs-writer"],
         }}
         visuals={{

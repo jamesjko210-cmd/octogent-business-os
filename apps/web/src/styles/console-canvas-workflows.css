@@ -1,0 +1,443 @@
+.console-shell .workflows-view {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+  padding: clamp(0.7rem, 1.2vw, 1.15rem);
+  background: radial-gradient(
+      circle at 91% 0%,
+      color-mix(in srgb, var(--term-orange) 14%, transparent),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 8% 100%,
+      color-mix(in srgb, var(--accent-primary) 11%, transparent),
+      transparent 24%
+    ), var(--bg-canvas);
+}
+
+.console-shell .workflow-command-header,
+.console-shell .workflow-create-panel,
+.console-shell .workflow-list-panel,
+.console-shell .workflow-summary-card,
+.console-shell .workflow-card {
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, var(--accent-primary) 22%);
+  background: color-mix(in srgb, #080b11 92%, var(--accent-primary) 8%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 5%, transparent);
+}
+
+.console-shell .workflow-command-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(0.85rem, 1.5vw, 1.3rem);
+}
+
+.console-shell .workflow-command-header h2,
+.console-shell .workflow-create-panel h3,
+.console-shell .workflow-list-panel h3,
+.console-shell .workflow-card h4,
+.console-shell .workflow-card h5 {
+  margin: 0;
+  color: #f9eed0;
+}
+
+.console-shell .workflow-command-header h2 {
+  max-width: 32ch;
+  font-size: clamp(1.15rem, 2vw, 1.75rem);
+  letter-spacing: 0.015em;
+}
+
+.console-shell .workflow-command-header p:not(.workflow-kicker),
+.console-shell .workflow-create-panel > div > p:not(.workflow-kicker),
+.console-shell .workflow-policy-key,
+.console-shell .workflow-card-description,
+.console-shell .workflow-empty-run,
+.console-shell .workflow-empty-state {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.console-shell .workflow-kicker,
+.console-shell .workflow-card-eyebrow {
+  margin: 0;
+  color: var(--accent-primary);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.console-shell .workflow-summary-card {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+}
+
+.console-shell .workflow-summary-card strong {
+  color: var(--accent-primary);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.console-shell .workflow-summary-card span {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-summary-card[data-tone="autonomous"] strong {
+  color: var(--term-green);
+}
+
+.console-shell .workflow-summary-card[data-tone="approval"] strong {
+  color: var(--term-orange);
+}
+
+.console-shell .workflow-notice {
+  display: block;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--term-green) 52%, var(--border-subtle));
+  background: color-mix(in srgb, var(--term-green) 10%, #090d10);
+  color: #b9efca;
+  padding: 0.48rem 0.68rem;
+  font-size: 0.76rem;
+}
+
+.console-shell .workflow-notice[data-tone="error"] {
+  border-color: color-mix(in srgb, var(--term-red) 65%, var(--border-subtle));
+  background: color-mix(in srgb, var(--term-red) 12%, #090d10);
+  color: #ffc0c4;
+}
+
+.console-shell .workflow-workbench {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.78fr) minmax(0, 1.8fr);
+  align-items: start;
+  gap: 0.7rem;
+  min-height: 0;
+}
+
+.console-shell .workflow-create-panel,
+.console-shell .workflow-list-panel {
+  padding: 0.85rem;
+}
+
+.console-shell .workflow-create-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.58rem;
+  position: sticky;
+  top: 0;
+}
+
+.console-shell .workflow-create-panel label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-create-panel input,
+.console-shell .workflow-create-panel textarea,
+.console-shell .workflow-create-panel select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #303744;
+  border-radius: 0;
+  background: #05070a;
+  color: #eef0f4;
+  font: inherit;
+  font-size: 0.77rem;
+  line-height: 1.35;
+  padding: 0.42rem 0.48rem;
+}
+
+.console-shell .workflow-create-panel textarea {
+  resize: vertical;
+}
+
+.console-shell .workflow-create-panel input:focus,
+.console-shell .workflow-create-panel textarea:focus,
+.console-shell .workflow-create-panel select:focus {
+  border-color: var(--accent-primary);
+  outline: 1px solid color-mix(in srgb, var(--accent-primary) 50%, transparent);
+}
+
+.console-shell .workflow-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
+.console-shell .workflow-list-panel {
+  min-height: calc(100vh - 12rem);
+}
+
+.console-shell .workflow-list-panel > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.console-shell .workflow-policy-key {
+  max-width: 25ch;
+  text-align: right;
+}
+
+.console-shell .workflow-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.console-shell .workflow-card {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border-left: 3px solid #4a5260;
+}
+
+.console-shell .workflow-card[data-level="autonomous"] {
+  border-left-color: var(--term-green);
+}
+
+.console-shell .workflow-card[data-level="human_assisted"] {
+  border-left-color: var(--accent-primary);
+}
+
+.console-shell .workflow-card[data-level="human_led"] {
+  border-left-color: var(--term-orange);
+}
+
+.console-shell .workflow-card[data-status="paused"] {
+  opacity: 0.72;
+}
+
+.console-shell .workflow-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.console-shell .workflow-card h4 {
+  margin-top: 0.16rem;
+  font-size: 1rem;
+  line-height: 1.12;
+}
+
+.console-shell .workflow-status-badge {
+  flex: 0 0 auto;
+  border: 1px solid #4b5667;
+  color: #c5ccd6;
+  padding: 0.16rem 0.28rem;
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-card[data-status="active"] .workflow-status-badge {
+  border-color: color-mix(in srgb, var(--term-green) 66%, #27333b);
+  color: var(--term-green);
+}
+
+.console-shell .workflow-card[data-status="draft"] .workflow-status-badge {
+  border-color: color-mix(in srgb, var(--accent-primary) 60%, #27333b);
+  color: var(--accent-primary);
+}
+
+.console-shell .workflow-metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.28rem;
+  margin: 0;
+}
+
+.console-shell .workflow-metadata div {
+  min-width: 0;
+  border-top: 1px solid #242b35;
+  padding-top: 0.32rem;
+}
+
+.console-shell .workflow-metadata dt {
+  color: #7f8998;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-metadata dd {
+  overflow: hidden;
+  margin: 0.16rem 0 0;
+  color: #d4dae4;
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-shell .workflow-detail-list {
+  min-width: 0;
+}
+
+.console-shell .workflow-detail-list h5,
+.console-shell .workflow-run-history h5 {
+  color: #8f9aaa;
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-detail-list ol,
+.console-shell .workflow-detail-list ul {
+  margin: 0.28rem 0 0;
+  padding-left: 1.08rem;
+  color: #bac2cf;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.console-shell .workflow-run-history {
+  border-top: 1px solid #242b35;
+  padding-top: 0.55rem;
+}
+
+.console-shell .workflow-run-row {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.32rem;
+  border-left: 2px solid #667084;
+  padding-left: 0.45rem;
+}
+
+.console-shell .workflow-run-row[data-status="awaiting_approval"] {
+  border-left-color: var(--term-orange);
+}
+
+.console-shell .workflow-run-row[data-status="denied"],
+.console-shell .workflow-run-row[data-status="failed"] {
+  border-left-color: var(--term-red);
+}
+
+.console-shell .workflow-run-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.console-shell .workflow-run-row strong {
+  color: #f3e5bc;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.console-shell .workflow-run-binding {
+  color: #9ba7b7;
+  font-size: 0.78rem;
+}
+
+.console-shell .workflow-run-outcome {
+  border-left: 2px solid color-mix(in srgb, var(--term-green) 65%, transparent);
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding-left: 0.65rem;
+}
+
+.console-shell .workflow-run-outcome p,
+.console-shell .workflow-run-outcome ul {
+  margin: 0;
+}
+
+.console-shell .workflow-run-outcome ul {
+  display: grid;
+  gap: 0.2rem;
+  padding-left: 1rem;
+}
+
+.console-shell .workflow-run-row span,
+.console-shell .workflow-run-row p {
+  margin: 0;
+  color: #9ba7b7;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.console-shell .workflow-approval-actions,
+.console-shell .workflow-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.console-shell .workflow-card-actions {
+  margin-top: auto;
+  border-top: 1px solid #242b35;
+  padding-top: 0.55rem;
+}
+
+.console-shell .workflow-empty-state {
+  border: 1px dashed #384252;
+  padding: 1.2rem;
+}
+
+@media (max-width: 980px) {
+  .console-shell .workflow-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .console-shell .workflow-create-panel {
+    position: static;
+  }
+
+  .console-shell .workflow-list-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .console-shell .workflow-command-header,
+  .console-shell .workflow-list-panel > header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .console-shell .workflow-policy-key {
+    max-width: none;
+    text-align: left;
+  }
+
+  .console-shell .workflow-summary-grid,
+  .console-shell .workflow-form-grid,
+  .console-shell .workflow-metadata {
+    grid-template-columns: 1fr;
+  }
+}

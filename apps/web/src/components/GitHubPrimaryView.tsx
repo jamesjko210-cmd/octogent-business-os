@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { GITHUB_OVERVIEW_GRAPH_HEIGHT, GITHUB_OVERVIEW_GRAPH_WIDTH } from "../app/constants";
 import { formatGitHubCommitHoverLabel } from "../app/githubMetrics";
+import type { GitHubPublishReadiness } from "../app/hooks/useGithubPublishReadinessPolling";
 import type { GitHubCommitSparkPoint, GitHubRecentCommit } from "../app/types";
 import { ActionButton } from "./ui/ActionButton";
 
@@ -15,6 +16,7 @@ type GitHubPrimaryViewProps = {
   githubOpenPrsLabel: string;
   githubRecentCommits: GitHubRecentCommit[];
   githubCommitCount30d: number;
+  githubPublishReadiness: GitHubPublishReadiness | null;
   githubOverviewHoverLabel: string;
   githubOverviewGraphPolylinePoints: string;
   githubOverviewGraphSeries: GitHubCommitSparkPoint[];
@@ -82,6 +84,7 @@ export const GitHubPrimaryView = ({
   githubOpenPrsLabel,
   githubRecentCommits,
   githubCommitCount30d,
+  githubPublishReadiness,
   githubOverviewHoverLabel,
   githubOverviewGraphPolylinePoints,
   githubOverviewGraphSeries,
@@ -140,6 +143,20 @@ export const GitHubPrimaryView = ({
 
   return (
     <section className="github-view" aria-label="GitHub primary view">
+      {githubPublishReadiness ? (
+        <section
+          className="github-publish-readiness"
+          data-status={githubPublishReadiness.status}
+          aria-label="GitHub publishing readiness"
+        >
+          <div>
+            <strong>Publishing readiness</strong>
+            <p>{githubPublishReadiness.message}</p>
+            {githubPublishReadiness.origin ? <code>{githubPublishReadiness.origin}</code> : null}
+          </div>
+          <span>{githubPublishReadiness.status === "ready" ? "Approved" : "Publish blocked"}</span>
+        </section>
+      ) : null}
       <section className="github-overview" aria-label="GitHub overview">
         <header className="github-overview-header">
           <h2>{githubRepoLabel}</h2>

@@ -10,7 +10,19 @@ export type StartupPrerequisiteIssue = {
 };
 
 export type StartupPrerequisiteAvailability = Record<
-  "claude" | "codex" | "git" | "gh" | "curl",
+  | "claude"
+  | "codex"
+  | "gemini"
+  | "perplexity"
+  | "notebooklm"
+  | "lmStudio"
+  | "notion"
+  | "stitch"
+  | "antigravity"
+  | "custom"
+  | "git"
+  | "gh"
+  | "curl",
   boolean
 >;
 
@@ -54,6 +66,16 @@ export const collectStartupPrerequisiteReport = (
   const availability: StartupPrerequisiteAvailability = {
     claude: isAvailable("claude"),
     codex: isAvailable("codex"),
+    gemini: isAvailable("gemini"),
+    perplexity: isAvailable("pplx") || Boolean(process.env.OCTOGENT_PERPLEXITY_COMMAND?.trim()),
+    notebooklm:
+      isAvailable("notebooklm") || Boolean(process.env.OCTOGENT_NOTEBOOKLM_COMMAND?.trim()),
+    lmStudio: isAvailable("lms") || Boolean(process.env.OCTOGENT_LM_STUDIO_COMMAND?.trim()),
+    notion: isAvailable("notion") || Boolean(process.env.OCTOGENT_NOTION_COMMAND?.trim()),
+    stitch: isAvailable("stitch") || Boolean(process.env.OCTOGENT_STITCH_COMMAND?.trim()),
+    antigravity:
+      isAvailable("antigravity") || Boolean(process.env.OCTOGENT_ANTIGRAVITY_COMMAND?.trim()),
+    custom: Boolean(process.env.OCTOGENT_CUSTOM_AGENT_COMMAND?.trim()),
     git: isAvailable("git"),
     gh: isAvailable("gh"),
     curl: isAvailable("curl"),
@@ -62,13 +84,24 @@ export const collectStartupPrerequisiteReport = (
   const errors: StartupPrerequisiteIssue[] = [];
   const warnings: StartupPrerequisiteIssue[] = [];
 
-  if (!availability.claude && !availability.codex) {
+  if (
+    !availability.claude &&
+    !availability.codex &&
+    !availability.gemini &&
+    !availability.perplexity &&
+    !availability.notebooklm &&
+    !availability.lmStudio &&
+    !availability.notion &&
+    !availability.stitch &&
+    !availability.antigravity &&
+    !availability.custom
+  ) {
     errors.push({
-      command: "claude/codex",
+      command: "claude/codex/gemini/pplx/notebooklm/lms/notion/stitch/antigravity/custom",
       severity: "error",
-      summary: "Neither `claude` nor `codex` is installed.",
+      summary: "No supported agent CLI is installed.",
       guidance:
-        "Install at least one agent CLI before starting Octogent. Claude-backed terminals use `claude`; Codex-backed terminals use `codex`.",
+        "Install at least one agent CLI before starting Octogent. Core providers use `claude`, `codex`, `gemini`, `pplx`, `lms`, or an OCTOGENT_*_COMMAND override.",
     });
   } else {
     if (!availability.claude) {
@@ -88,6 +121,66 @@ export const collectStartupPrerequisiteReport = (
         summary: "`codex` is not installed.",
         guidance:
           "Codex-backed terminals and Codex usage telemetry are unavailable. Install Codex CLI and run `codex login` if you want Codex terminals.",
+      });
+    }
+
+    if (!availability.gemini) {
+      warnings.push({
+        command: "gemini",
+        severity: "warning",
+        summary: "`gemini` is not installed.",
+        guidance:
+          "Gemini-backed terminals are unavailable. Install Gemini CLI if you want Gemini agents.",
+      });
+    }
+
+    if (!availability.perplexity) {
+      warnings.push({
+        command: "pplx",
+        severity: "warning",
+        summary: "`pplx` is not installed.",
+        guidance:
+          "Perplexity research terminals are unavailable through the default command. Install a Perplexity CLI wrapper or set OCTOGENT_PERPLEXITY_COMMAND to your local research command.",
+      });
+    }
+
+    if (!availability.notebooklm) {
+      warnings.push({
+        command: "notebooklm",
+        severity: "warning",
+        summary: "No NotebookLM workflow command is configured.",
+        guidance:
+          "NotebookLM terminals need a local wrapper command. Set OCTOGENT_NOTEBOOKLM_COMMAND to a script that opens or syncs your curated source-grounded research workflow.",
+      });
+    }
+
+    if (!availability.lmStudio) {
+      warnings.push({
+        command: "lms",
+        severity: "warning",
+        summary: "`lms` is not installed.",
+        guidance:
+          "Qwen/LM Studio-backed terminals are unavailable through the default command. Install LM Studio with a Qwen model or set OCTOGENT_LM_STUDIO_COMMAND to your local chat command.",
+      });
+    }
+
+    if (!availability.notion) {
+      warnings.push({
+        command: "notion",
+        severity: "warning",
+        summary: "No Notion workflow command is configured.",
+        guidance:
+          "Notion terminals need a local wrapper command. Set OCTOGENT_NOTION_COMMAND to a script that opens or syncs your Notion memory workflow.",
+      });
+    }
+
+    if (!availability.stitch) {
+      warnings.push({
+        command: "stitch",
+        severity: "warning",
+        summary: "No Google Stitch workflow command is configured.",
+        guidance:
+          "Stitch terminals need a local wrapper command. Set OCTOGENT_STITCH_COMMAND to a script that opens or prepares your UI/UX workflow.",
       });
     }
   }

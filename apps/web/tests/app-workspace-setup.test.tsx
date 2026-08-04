@@ -82,6 +82,19 @@ const buildSetupSnapshot = (
       command: null,
     },
   ],
+  agenticOs: {
+    brains: [
+      {
+        id: "claude",
+        label: "Claude",
+        role: "Planning and synthesis.",
+        status: "available_local",
+        command: "claude",
+        guidance: "Claude is ready.",
+        workflowUrl: "https://claude.ai/",
+      },
+    ],
+  },
   ...overrides,
 });
 

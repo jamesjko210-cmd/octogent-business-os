@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { TERMINAL_REGISTRY_VERSION } from "./constants";
+import type { PersistedTerminalSecurity } from "./security";
 
 import { toErrorMessage } from "./systemClients";
 import type {
@@ -34,6 +35,59 @@ const isTerminalLifecycleState = (value: unknown): value is TerminalLifecycleSta
   value === "stopped" ||
   value === "exited" ||
   value === "stale";
+
+const parseTerminalSecurity = (value: unknown): PersistedTerminalSecurity | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const identity = isRecord(value.identity) ? value.identity : null;
+  const accessScope = isRecord(value.accessScope) ? value.accessScope : null;
+  if (!identity || !accessScope) {
+    return undefined;
+  }
+
+  const algorithm = identity.algorithm;
+  const publicKeyPem = identity.publicKeyPem;
+  const privateKeyPem = identity.privateKeyPem;
+  const fingerprint = identity.fingerprint;
+  const createdAt = identity.createdAt;
+  const workspaceMode = accessScope.workspaceMode;
+  const tentacleId = accessScope.tentacleId;
+  const allowedPaths = accessScope.allowedPaths;
+  const allowedTools = accessScope.allowedTools;
+
+  if (
+    algorithm !== "ed25519" ||
+    typeof publicKeyPem !== "string" ||
+    typeof privateKeyPem !== "string" ||
+    typeof fingerprint !== "string" ||
+    typeof createdAt !== "string" ||
+    (workspaceMode !== "shared" && workspaceMode !== "worktree") ||
+    typeof tentacleId !== "string" ||
+    !Array.isArray(allowedPaths) ||
+    !Array.isArray(allowedTools)
+  ) {
+    return undefined;
+  }
+
+  return {
+    identity: {
+      algorithm,
+      publicKeyPem,
+      privateKeyPem,
+      fingerprint,
+      createdAt,
+    },
+    accessScope: {
+      workspaceMode,
+      tentacleId,
+      ...(typeof accessScope.worktreeId === "string" ? { worktreeId: accessScope.worktreeId } : {}),
+      allowedPaths: allowedPaths.filter((item): item is string => typeof item === "string"),
+      allowedTools: allowedTools.filter((item): item is string => typeof item === "string"),
+    },
+  };
+};
 
 const inferTerminalNameOrigin = (terminalId: string, tentacleName: string): TerminalNameOrigin => {
   if (tentacleName === terminalId || /^Octogent Terminal \d+$/.test(tentacleName)) {
@@ -302,6 +356,7 @@ const parseV3Terminals = (
     ) {
       terminal.exitSignal = entry.exitSignal;
     }
+    terminal.security = parseTerminalSecurity(entry.security);
     terminals.set(terminalId, terminal);
   }
 

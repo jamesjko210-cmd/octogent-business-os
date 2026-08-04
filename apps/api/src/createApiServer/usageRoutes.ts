@@ -82,3 +82,20 @@ export const handleGithubSummaryRoute: ApiRouteHandler = async (
   writeJson(response, 200, payload, corsOrigin);
   return true;
 };
+
+export const handleGithubPublishReadinessRoute: ApiRouteHandler = async (
+  { request, response, requestUrl, corsOrigin },
+  { readGithubPublishReadiness },
+) => {
+  if (requestUrl.pathname !== "/api/github/publish-readiness") {
+    return false;
+  }
+
+  if (request.method !== "GET") {
+    writeMethodNotAllowed(response, corsOrigin);
+    return true;
+  }
+
+  writeJson(response, 200, await readGithubPublishReadiness(), corsOrigin);
+  return true;
+};

@@ -11,6 +11,7 @@ export type SwarmDefinition = {
 
 export type SwarmRegistryEntry = SwarmDefinition & {
   isDefault: boolean;
+  isRemovable: boolean;
   state: AgentRosterState;
   roleCount: number;
   workingCount: number;
@@ -90,6 +91,9 @@ export const listSwarmRegistry = (
     return {
       ...swarm,
       isDefault: DEFAULT_SWARM_IDS.has(swarm.id),
+      isRemovable:
+        !DEFAULT_SWARM_IDS.has(swarm.id) &&
+        members.every((agent) => agent.state === "not_launched"),
       state: deriveSwarmState(members),
       roleCount: members.length,
       workingCount: members.filter((agent) => agent.state === "working").length,
@@ -161,13 +165,21 @@ export const createSwarmRegistryStore = (projectStateDir: string) => {
     writeFileSync(swarmsPath, `${JSON.stringify({ swarms }, null, 2)}\n`, "utf8");
     return definition;
   };
-  const remove = (swarmId: string): SwarmDefinition => {
+  const remove = (swarmId: string, agents: readonly AgentRosterEntry[]): SwarmDefinition => {
     if (DEFAULT_SWARM_IDS.has(swarmId)) {
       throw new Error("Default project swarms cannot be removed.");
     }
     const swarms = list();
     const removed = swarms.find((swarm) => swarm.id === swarmId);
     if (!removed) throw new Error("Custom project swarm not found.");
+    const hasActiveRole = agents.some(
+      (agent) => removed.agentIds.includes(agent.id) && agent.state !== "not_launched",
+    );
+    if (hasActiveRole) {
+      throw new Error(
+        "Release or clean up active role terminals before removing this project swarm.",
+      );
+    }
     mkdirSync(dirname(swarmsPath), { recursive: true });
     writeFileSync(
       swarmsPath,

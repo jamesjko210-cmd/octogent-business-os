@@ -15,6 +15,7 @@ type SwarmRegistryEntry = {
   title: string;
   purpose: string;
   isDefault: boolean;
+  isRemovable: boolean;
   state: SwarmState;
   roleCount: number;
   workingCount: number;
@@ -272,6 +273,10 @@ export const SwarmDirectoryPanel = () => {
             )}
             {swarm.isDefault ? (
               <p className="settings-swarm-protected">Default swarm: permanent project lane.</p>
+            ) : !swarm.isRemovable ? (
+              <p className="settings-swarm-protected">
+                Release or clean up its active role terminals before removing this custom swarm.
+              </p>
             ) : (
               <div className="settings-swarm-actions">
                 <span>Custom swarm: safe to remove when its project is finished.</span>

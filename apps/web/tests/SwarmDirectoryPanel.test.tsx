@@ -20,6 +20,7 @@ describe("SwarmDirectoryPanel", () => {
                 title: "Game Business",
                 purpose: "Builds Block Bounce.",
                 isDefault: true,
+                isRemovable: false,
                 state: "working",
                 roleCount: 12,
                 workingCount: 1,
@@ -41,6 +42,7 @@ describe("SwarmDirectoryPanel", () => {
                 title: "Research",
                 purpose: "Grounds decisions.",
                 isDefault: true,
+                isRemovable: false,
                 state: "prepared",
                 roleCount: 1,
                 workingCount: 0,
@@ -87,6 +89,7 @@ describe("SwarmDirectoryPanel", () => {
                 title: "Game Business",
                 purpose: "Builds Block Bounce.",
                 isDefault: true,
+                isRemovable: false,
                 state: "not_launched",
                 roleCount: 12,
                 workingCount: 0,
@@ -101,6 +104,7 @@ describe("SwarmDirectoryPanel", () => {
                 title: "School Project",
                 purpose: "Keeps school work separate.",
                 isDefault: false,
+                isRemovable: true,
                 state: "not_launched",
                 roleCount: 1,
                 workingCount: 0,
@@ -158,5 +162,57 @@ describe("SwarmDirectoryPanel", () => {
     expect(
       await screen.findByText("School Project was removed. Permanent roles remain available."),
     ).toBeInTheDocument();
+  });
+
+  it("does not offer custom-swarm removal while its assigned role is active", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            swarms: [
+              {
+                id: "school-project",
+                title: "School Project",
+                purpose: "Keeps school work separate.",
+                isDefault: false,
+                isRemovable: false,
+                state: "working",
+                roleCount: 1,
+                workingCount: 1,
+                waitingCount: 0,
+                readyCount: 0,
+                preparedCount: 0,
+                notLaunchedCount: 0,
+                activeRoles: [
+                  {
+                    id: "research-triad",
+                    title: "Research Triad",
+                    state: "working",
+                    currentActivity: "researching: Collecting sources.",
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ agents: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SwarmDirectoryPanel />);
+
+    expect(
+      await screen.findByText(
+        "Release or clean up its active role terminals before removing this custom swarm.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove School Project" })).not.toBeInTheDocument();
   });
 });

@@ -72,7 +72,11 @@ export const handleSwarmRegistryItemRoute: ApiRouteHandler = async (
   }
 
   try {
-    const swarm = createSwarmRegistryStore(projectStateDir).remove(swarmId);
+    const agents = listAgentRoster(
+      runtime.listTerminalSnapshots(),
+      createAgentActivityStore(projectStateDir).read(),
+    );
+    const swarm = createSwarmRegistryStore(projectStateDir).remove(swarmId, agents);
     runtime.appendAuditEvent("swarm_registry.removed", {
       payload: { swarmId: swarm.id, roleCount: swarm.agentIds.length },
     });

@@ -567,6 +567,32 @@ describe("createApiServer", () => {
       error: "Default project swarms cannot be removed.",
     });
 
+    const preparedRoleResponse = await fetch(`${baseUrl}/api/terminals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        terminalId: "school-research-role",
+        agentId: "research-triad",
+        tentacleId: "research",
+        workspaceMode: "shared",
+        agentProvider: "gemini-cli",
+      }),
+    });
+    expect(preparedRoleResponse.status).toBe(201);
+
+    const rejectedActiveResponse = await fetch(`${baseUrl}/api/swarms/school-project`, {
+      method: "DELETE",
+    });
+    expect(rejectedActiveResponse.status).toBe(400);
+    await expect(rejectedActiveResponse.json()).resolves.toEqual({
+      error: "Release or clean up active role terminals before removing this project swarm.",
+    });
+
+    const releaseRoleResponse = await fetch(`${baseUrl}/api/terminals/school-research-role`, {
+      method: "DELETE",
+    });
+    expect(releaseRoleResponse.status).toBe(204);
+
     const removeResponse = await fetch(`${baseUrl}/api/swarms/school-project`, {
       method: "DELETE",
     });

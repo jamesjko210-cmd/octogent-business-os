@@ -130,9 +130,9 @@ describe("listSwarmRegistry", () => {
       expect(createSwarmRegistryStore(projectStateDir).list()).toEqual([
         expect.objectContaining({ id: "school-project" }),
       ]);
-      expect(store.remove("school-project")).toMatchObject({ id: "school-project" });
+      expect(store.remove("school-project", agents)).toMatchObject({ id: "school-project" });
       expect(createSwarmRegistryStore(projectStateDir).list()).toEqual([]);
-      expect(() => store.remove("game-business")).toThrow(
+      expect(() => store.remove("game-business", agents)).toThrow(
         "Default project swarms cannot be removed",
       );
       expect(() =>
@@ -157,6 +157,14 @@ describe("listSwarmRegistry", () => {
           agents,
         ),
       ).toThrow("already in use");
+
+      const preparedAgents = agents.map((agent) => ({ ...agent, state: "prepared" as const }));
+      expect(() => store.remove("school-project", preparedAgents)).toThrow(
+        "Release or clean up active role terminals",
+      );
+      expect(createSwarmRegistryStore(projectStateDir).list()).toEqual([
+        expect.objectContaining({ id: "school-project" }),
+      ]);
     } finally {
       rmSync(projectStateDir, { force: true, recursive: true });
     }

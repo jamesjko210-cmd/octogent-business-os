@@ -20,8 +20,19 @@ Telegram is the human-to-agent bridge for Octogent. It does not replace agent-to
 ## Setup
 
 1. Create a dedicated bot with Telegram's BotFather and keep its token private.
-2. Choose only the personal or private-group chat IDs that may operate Octogent. Do not use a broad public group.
-3. Start Octogent with these environment variables set in your own shell or secret manager. Do not place them in a repository, prompt, memory entry, or `.env` file that might be committed.
+2. Open a direct chat with that bot, press **Start**, and send `/help`. Use a direct chat or a deliberately small private group, never a public group.
+3. Find the numeric chat ID locally, without sending the bot token to a chat, repository, or third-party service:
+
+```sh
+read -rs "OCTOGENT_TELEGRAM_BOT_TOKEN?Bot token: "
+printf "\n"
+curl -sS "https://api.telegram.org/bot${OCTOGENT_TELEGRAM_BOT_TOKEN}/getUpdates"
+unset OCTOGENT_TELEGRAM_BOT_TOKEN
+```
+
+In the JSON printed only in your terminal, locate the `message.chat.id` for the direct chat or private group you just used. If the result is empty, send the bot another message and repeat the command. Do not share the JSON because it can include message text.
+
+4. Start Octogent with these environment variables set in your own shell or secret manager. Do not place them in a repository, prompt, memory entry, or `.env` file that might be committed.
 
 ```sh
 export OCTOGENT_TELEGRAM_BOT_TOKEN='your-private-bot-token'
@@ -29,7 +40,7 @@ export OCTOGENT_TELEGRAM_ALLOWED_CHAT_IDS='your-trusted-chat-id'
 pnpm dev
 ```
 
-For multiple trusted chats, separate numeric IDs with commas. `OCTOGENT_TELEGRAM_POLL_TIMEOUT_SECONDS` is optional and is capped at 50 seconds.
+For multiple trusted chats, separate numeric IDs with commas. `OCTOGENT_TELEGRAM_POLL_TIMEOUT_SECONDS` is optional and is capped at 50 seconds. After the bridge starts, send `/roles` from the trusted chat; the Settings status should change to **running** after the first successful poll.
 
 The Settings screen shows the bridge state but never exposes the token or chat IDs. The bridge refuses to start if either the token or trusted-chat allowlist is missing or malformed.
 

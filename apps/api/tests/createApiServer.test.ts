@@ -1805,6 +1805,40 @@ describe("createApiServer", () => {
     expect(response.status).toBe(405);
   });
 
+  it("redacts non-routing query values from API audit records", async () => {
+    const baseUrl = await startServer({
+      readGithubRepoSummary: async () => ({
+        status: "unavailable",
+        message: "No GitHub summary needed for this audit test.",
+        fetchedAt: "2026-08-05T00:00:00.000Z",
+        source: "none",
+      }),
+    });
+
+    const response = await fetch(
+      `${baseUrl}/api/github/summary?scope=project&api_key=should-not-persist&q=private-query`,
+    );
+    expect(response.status).toBe(200);
+
+    const auditResponse = await fetch(`${baseUrl}/api/audit`);
+    const auditPayload = (await auditResponse.json()) as {
+      events: Array<{ eventType: string; payload: { path?: string; query?: string } }>;
+    };
+    expect(auditPayload.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventType: "api.call",
+          payload: expect.objectContaining({
+            path: "/api/github/summary",
+            query: "?scope=project&api_key=[redacted]&q=[redacted]",
+          }),
+        }),
+      ]),
+    );
+    expect(JSON.stringify(auditPayload)).not.toContain("should-not-persist");
+    expect(JSON.stringify(auditPayload)).not.toContain("private-query");
+  });
+
   it("requires explicit confirmation before running the isolated Codex handshake", async () => {
     const successfulHandshake = {
       provider: "codex" as const,

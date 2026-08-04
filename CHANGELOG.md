@@ -19,6 +19,7 @@ This log records verified Octogent changes before they are committed and publish
 
 ### Added
 
+- Safe API query audit metadata. The request audit now retains only bounded, allowlisted routing values and redacts all other query values, preventing prompt, session, credential, or arbitrary user content from entering the durable audit trail.
 - Explicit Codex provider-response verification. Settings now offers a manual, rate-limited isolated check after local Codex sign-in is verified. It runs a fixed one-line prompt in a fresh temporary directory with read-only sandboxing, no project or user rules, no tool request, and no stored response text. The API requires a fixed confirmation value and records only safe requested/completed audit metadata.
 - Local Codex sign-in evidence. The Systems brain map now distinguishes a discovered command from a locally authenticated Codex CLI session using `codex login status`; it does not make a model request or claim that a provider response succeeded.
 - Agent Directory API and Systems dashboard cards for 13 permanent operating roles, including a plain-language purpose, launch reason, scoped provider/tentacle, and real terminal-derived status.

@@ -238,6 +238,32 @@ const logRequest = (method: string, path: string, status: number, startTime: num
   logVerbose(`[API] ${method} ${path} ${status} ${Date.now() - startTime}ms`);
 };
 
+const AUDIT_SAFE_QUERY_KEYS = new Set([
+  "agentId",
+  "format",
+  "limit",
+  "scope",
+  "status",
+  "tentacleId",
+]);
+const MAX_AUDIT_QUERY_PARAMETERS = 20;
+const MAX_AUDIT_QUERY_VALUE_LENGTH = 160;
+
+// Keep routing metadata without putting prompts, session values, or credentials into durable audit.
+const redactAuditQuery = (requestUrl: URL) => {
+  const entries = [...requestUrl.searchParams.entries()].slice(0, MAX_AUDIT_QUERY_PARAMETERS);
+  if (entries.length === 0) return "";
+  const serialized = entries.map(([key, value]) => {
+    const safeValue = AUDIT_SAFE_QUERY_KEYS.has(key)
+      ? encodeURIComponent(value.slice(0, MAX_AUDIT_QUERY_VALUE_LENGTH))
+      : "[redacted]";
+    return `${encodeURIComponent(key)}=${safeValue}`;
+  });
+  if (requestUrl.searchParams.size > entries.length)
+    serialized.push("[additional_parameters_redacted]");
+  return `?${serialized.join("&")}`;
+};
+
 const safeDecodeURIComponent = (value: string): string => {
   try {
     return decodeURIComponent(value);
@@ -353,7 +379,7 @@ export const createApiRequestHandler = ({
         payload: {
           method: request.method ?? "?",
           path: requestUrl.pathname,
-          query: requestUrl.search,
+          query: redactAuditQuery(requestUrl),
           status: statusCode || response.statusCode,
           origin: readHeaderValue(request.headers.origin) ?? null,
         },

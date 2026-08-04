@@ -914,6 +914,49 @@
   text-transform: uppercase;
 }
 
+.settings-panel--provider-handshake {
+  border-color: color-mix(in srgb, var(--term-gold) 42%, #28303c);
+}
+
+.settings-provider-handshake-header {
+  align-items: flex-start;
+}
+
+.settings-provider-handshake-status {
+  border: 1px solid #485264;
+  border-radius: 999px;
+  color: #c2cbd8;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.18rem 0.38rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.settings-provider-handshake-status[data-status="succeeded"] {
+  border-color: color-mix(in srgb, var(--term-green) 60%, #294635);
+  color: #c2f5d4;
+}
+
+.settings-provider-handshake-status[data-status="failed"],
+.settings-provider-handshake-status[data-status="unavailable"] {
+  border-color: color-mix(in srgb, var(--term-red) 60%, #5d2b31);
+  color: #ffc2c6;
+}
+
+.settings-provider-handshake-detail,
+.settings-provider-handshake-error {
+  margin: 0.5rem 0 0;
+  color: #b8c6da;
+  font-size: 0.78rem;
+  line-height: 1.42;
+}
+
+.settings-provider-handshake-error {
+  color: #ffabb0;
+}
+
 .settings-brain-open:hover {
   border-color: color-mix(in srgb, var(--accent-primary) 72%, #ffffff);
   background: color-mix(in srgb, var(--accent-primary) 30%, #111822);

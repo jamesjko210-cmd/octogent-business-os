@@ -11,6 +11,7 @@ import type { GitHubPublishReadiness } from "../githubPublishReadiness";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import { logVerbose } from "../logging";
 import type { MonitorService } from "../monitor";
+import type { ProviderHandshakeRunner } from "../providerHandshake";
 import type { TelegramBridge } from "../telegramBridge";
 import { handleAgentActivityRoute } from "./agentActivityRoutes";
 import { handleAgentInboxRoute } from "./agentInboxRoutes";
@@ -56,6 +57,7 @@ import {
   handleMonitorRefreshRoute,
 } from "./monitorRoutes";
 import { handleOperatorUpdatesRoute } from "./operatorUpdateRoutes";
+import { handleProviderHandshakeRoute } from "./providerHandshakeRoutes";
 import type {
   ApiRouteHandler,
   RouteHandlerContext,
@@ -135,6 +137,7 @@ type CreateApiRequestHandlerOptions = {
   invalidateClaudeUsageCache: () => void;
   codeIntelStore: CodeIntelStore;
   telegramBridge: TelegramBridge;
+  providerHandshakeRunner: ProviderHandshakeRunner;
   obsidianVaultPath: string;
   allowRemoteAccess: boolean;
 };
@@ -156,6 +159,7 @@ const API_ROUTE_MAP: ReadonlyMap<string, readonly ApiRouteHandler[]> = new Map([
   ["autonomous-skills", [handleAutonomousSkillsRoute]],
   ["channels", [handleChannelMessagesRoute]],
   ["telegram", [handleTelegramStatusRoute]],
+  ["providers", [handleProviderHandshakeRoute]],
   ["hooks", [handleHookRoute]],
   ["prompts", [handlePromptsCollectionRoute, handlePromptItemRoute]],
   [
@@ -301,6 +305,7 @@ export const createApiRequestHandler = ({
   invalidateClaudeUsageCache,
   codeIntelStore,
   telegramBridge,
+  providerHandshakeRunner,
   obsidianVaultPath,
   allowRemoteAccess,
 }: CreateApiRequestHandlerOptions) => {
@@ -325,6 +330,7 @@ export const createApiRequestHandler = ({
     invalidateClaudeUsageCache,
     codeIntelStore,
     telegramBridge,
+    providerHandshakeRunner,
     obsidianVaultPath,
   };
 

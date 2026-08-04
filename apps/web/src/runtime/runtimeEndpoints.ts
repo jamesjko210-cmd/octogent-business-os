@@ -105,6 +105,12 @@ export const buildCodexUsageUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   return buildAbsoluteUrl(runtimeBaseUrl, "/api/codex/usage");
 };
 
+export const buildCodexProviderHandshakeUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = "/api/providers/codex/handshake";
+  if (!runtimeBaseUrl) return path;
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildClaudeUsageUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   if (!runtimeBaseUrl) {
     return "/api/claude/usage";

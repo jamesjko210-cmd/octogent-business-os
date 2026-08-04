@@ -1805,6 +1805,58 @@ describe("createApiServer", () => {
     expect(response.status).toBe(405);
   });
 
+  it("requires explicit confirmation before running the isolated Codex handshake", async () => {
+    const successfulHandshake = {
+      provider: "codex" as const,
+      status: "succeeded" as const,
+      checkedAt: "2026-08-05T00:00:00.000Z",
+      detail: "Codex returned the expected isolated read-only handshake response.",
+    };
+    const runCodex = vi.fn(() => successfulHandshake);
+    const baseUrl = await startServer({
+      providerHandshakeRunner: {
+        read: () => ({
+          provider: "codex",
+          status: "not_run",
+          detail: "No provider response check has been run.",
+        }),
+        runCodex,
+      },
+    });
+
+    const initialResponse = await fetch(`${baseUrl}/api/providers/codex/handshake`);
+    expect(initialResponse.status).toBe(200);
+    await expect(initialResponse.json()).resolves.toMatchObject({ status: "not_run" });
+
+    const unconfirmedResponse = await fetch(`${baseUrl}/api/providers/codex/handshake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(unconfirmedResponse.status).toBe(400);
+    expect(runCodex).not.toHaveBeenCalled();
+
+    const confirmedResponse = await fetch(`${baseUrl}/api/providers/codex/handshake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmation: "RUN_CODEX_READ_ONLY_HANDSHAKE" }),
+    });
+    expect(confirmedResponse.status).toBe(200);
+    await expect(confirmedResponse.json()).resolves.toEqual(successfulHandshake);
+    expect(runCodex).toHaveBeenCalledTimes(1);
+
+    const auditResponse = await fetch(`${baseUrl}/api/audit`);
+    await expect(auditResponse.json()).resolves.toEqual({
+      events: expect.arrayContaining([
+        expect.objectContaining({ eventType: "provider_handshake.requested" }),
+        expect.objectContaining({
+          eventType: "provider_handshake.completed",
+          payload: { provider: "codex", status: "succeeded" },
+        }),
+      ]),
+    });
+  });
+
   it("POST /api/hooks/session-start invalidates claude usage cache", async () => {
     let callCount = 0;
     const readClaudeUsageSnapshot = async () => {

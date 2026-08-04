@@ -7,6 +7,7 @@ import {
 import { AgentDirectoryPanel } from "./AgentDirectoryPanel";
 import { GoalCommandCenter } from "./GoalCommandCenter";
 import { MemoryCenterPanel } from "./MemoryCenterPanel";
+import { ProviderHandshakePanel } from "./ProviderHandshakePanel";
 import { SessionHistoryPanel } from "./SessionHistoryPanel";
 import { SwarmDirectoryPanel } from "./SwarmDirectoryPanel";
 import { TelegramBridgePanel } from "./TelegramBridgePanel";
@@ -118,6 +119,9 @@ export const SettingsPrimaryView = ({
   const authenticatedBrainCount = brains.filter(
     (brain) => brain.status === "authenticated_local",
   ).length;
+  const codexSignedIn = brains.some(
+    (brain) => brain.id === "codex" && brain.status === "authenticated_local",
+  );
   const brainStatusLabel = (brain: AgenticOsBrain) =>
     brain.status === "authenticated_local"
       ? "signed in locally"
@@ -185,6 +189,8 @@ export const SettingsPrimaryView = ({
           ))}
         </div>
       </section>
+
+      <ProviderHandshakePanel codexSignedIn={codexSignedIn} />
 
       <SwarmDirectoryPanel />
 

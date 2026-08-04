@@ -75,6 +75,8 @@ export type AuditEventType =
   | "telegram.message_rejected"
   | "telegram.updates_viewed"
   | "telegram.poll_failed"
+  | "provider_handshake.requested"
+  | "provider_handshake.completed"
   | "obsidian.update_appended"
   | "obsidian.update_rejected"
   | "obsidian.searched"

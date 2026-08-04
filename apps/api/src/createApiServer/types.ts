@@ -4,6 +4,7 @@ import type { CodexUsageSnapshot } from "../codexUsage";
 import type { GitHubPublishReadiness } from "../githubPublishReadiness";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import type { MonitorService } from "../monitor";
+import type { ProviderHandshakeRunner } from "../providerHandshake";
 import type { TelegramBridge } from "../telegramBridge";
 import type { GitClient } from "../terminalRuntime";
 
@@ -23,6 +24,7 @@ export type CreateApiServerOptions = {
   scanUsageHeatmap?: (scope: "all" | "project") => Promise<UsageChartResponse>;
   monitorService?: MonitorService;
   telegramBridge?: TelegramBridge;
+  providerHandshakeRunner?: ProviderHandshakeRunner;
   obsidianVaultPath?: string | undefined;
   invalidateClaudeUsageCache?: () => void;
   allowRemoteAccess?: boolean;

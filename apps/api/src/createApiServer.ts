@@ -18,6 +18,7 @@ import { readGithubPublishReadiness as readGithubPublishReadinessDefault } from 
 import { readGithubRepoSummary as readGithubRepoSummaryDefault } from "./githubRepoSummary";
 import { createMonitorService } from "./monitor";
 import { resolveObsidianVaultPath } from "./obsidianVault";
+import { createProviderHandshakeRunner } from "./providerHandshake";
 import { createTelegramBridge } from "./telegramBridge";
 import { createTerminalRuntime } from "./terminalRuntime";
 
@@ -37,6 +38,7 @@ export const createApiServer = ({
   scanUsageHeatmap,
   monitorService,
   telegramBridge,
+  providerHandshakeRunner,
   obsidianVaultPath,
   invalidateClaudeUsageCache = invalidateUsageCacheDefault,
   allowRemoteAccess = false,
@@ -126,6 +128,8 @@ export const createApiServer = ({
 
   const codeIntelStore = createCodeIntelStore(resolvedStateDir);
   const telegramBridgeWithDefault = telegramBridge ?? createTelegramBridge({ runtime });
+  const providerHandshakeRunnerWithDefault =
+    providerHandshakeRunner ?? createProviderHandshakeRunner();
   const resolvedObsidianVaultPath = obsidianVaultPath ?? resolveObsidianVaultPath();
 
   const requestHandler = createApiRequestHandler({
@@ -148,6 +152,7 @@ export const createApiServer = ({
     invalidateClaudeUsageCache,
     codeIntelStore,
     telegramBridge: telegramBridgeWithDefault,
+    providerHandshakeRunner: providerHandshakeRunnerWithDefault,
     obsidianVaultPath: resolvedObsidianVaultPath,
     allowRemoteAccess,
   });

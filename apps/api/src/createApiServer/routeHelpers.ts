@@ -7,6 +7,7 @@ import type { CodexUsageSnapshot } from "../codexUsage";
 import type { GitHubPublishReadiness } from "../githubPublishReadiness";
 import type { GitHubRepoSummarySnapshot } from "../githubRepoSummary";
 import type { MonitorService } from "../monitor";
+import type { ProviderHandshakeRunner } from "../providerHandshake";
 import type { TelegramBridge } from "../telegramBridge";
 import { RequestBodyTooLargeError, readJsonBody } from "./requestParsers";
 import { withCors } from "./security";
@@ -32,6 +33,7 @@ export type RouteHandlerDependencies = {
   invalidateClaudeUsageCache: () => void;
   codeIntelStore: CodeIntelStore;
   telegramBridge: TelegramBridge;
+  providerHandshakeRunner: ProviderHandshakeRunner;
   obsidianVaultPath: string;
 };
 

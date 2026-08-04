@@ -14,6 +14,67 @@ afterEach(() => {
 });
 
 describe("GoalCommandCenter", () => {
+  it("assigns an existing goal to a permanent role without launching that role", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/goals" && (!init?.method || init.method === "GET")) {
+        return jsonResponse({
+          goals: [
+            {
+              id: "goal-unassigned",
+              title: "Prepare the game MVP",
+              description: "Make the browser MVP ready for a playtest.",
+              status: "active",
+              priority: "high",
+              tentacleId: "game-business",
+              successCriteria: [],
+              constraints: [],
+              evidence: [],
+            },
+          ],
+        });
+      }
+      if (url === "/api/agents") {
+        return jsonResponse({
+          agents: [
+            {
+              id: "codex-executor",
+              title: "Codex Executor",
+              tentacleId: "game-business",
+              state: "not_launched",
+              currentActivity: "No matching terminal is launched yet.",
+            },
+          ],
+        });
+      }
+      if (url === "/api/workflows") return jsonResponse({ workflows: [], runs: [] });
+      if (url === "/api/goals/goal-unassigned" && init?.method === "PATCH") {
+        return jsonResponse({ id: "goal-unassigned", ownerAgentId: "codex-executor" });
+      }
+      return jsonResponse({ error: "Unexpected request" }, 500);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<GoalCommandCenter />);
+
+    expect(await screen.findByText("Prepare the game MVP")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Assign role" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Owner for Prepare the game MVP"), {
+      target: { value: "codex-executor" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Assign role" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/goals/goal-unassigned",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ ownerAgentId: "codex-executor" }),
+        }),
+      );
+    });
+  });
+
   it("creates a role-owned goal and requires completion evidence", async () => {
     const initialGoals = {
       goals: [

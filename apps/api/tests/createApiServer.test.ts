@@ -2490,6 +2490,33 @@ describe("createApiServer", () => {
       expect.objectContaining({ id: goal.id, status: "active" }),
     );
 
+    const assignOwnerResponse = await fetch(`${baseUrl}/api/goals/${goal.id}`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ownerAgentId: "record-center" }),
+    });
+    expect(assignOwnerResponse.status).toBe(200);
+    await expect(assignOwnerResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        id: goal.id,
+        ownerAgentId: "record-center",
+        tentacleId: "game-business",
+      }),
+    );
+
+    const invalidOwnerAssignmentResponse = await fetch(`${baseUrl}/api/goals/${goal.id}`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ownerAgentId: "unknown-role" }),
+    });
+    expect(invalidOwnerAssignmentResponse.status).toBe(400);
+
     const incompleteCompletionResponse = await fetch(`${baseUrl}/api/goals/${goal.id}`, {
       method: "PATCH",
       headers: {

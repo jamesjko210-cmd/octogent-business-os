@@ -50,6 +50,7 @@ export type AuditEventType =
   | "memory.created"
   | "memory.searched"
   | "goal.created"
+  | "goal.owner_assigned"
   | "goal.status_changed"
   | "goals.listed"
   | "runtime_policies.loaded"

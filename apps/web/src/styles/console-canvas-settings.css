@@ -449,6 +449,36 @@
   text-transform: uppercase;
 }
 
+.goal-command-owner {
+  display: grid;
+  gap: 0.36rem;
+  border-top: 1px solid #2b2f36;
+  padding-top: 0.56rem;
+}
+
+.goal-command-owner > strong {
+  color: #cde3ff;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.goal-command-owner > div {
+  display: flex;
+  gap: 0.42rem;
+}
+
+.goal-command-owner select {
+  min-width: 0;
+  flex: 1;
+}
+
+.goal-command-owner small {
+  color: #9eb0c8;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
 .settings-swarm-activity-list {
   display: grid;
   gap: 0.55rem;

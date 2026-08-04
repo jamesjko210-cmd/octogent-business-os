@@ -181,7 +181,34 @@ export const createGoalStore = (projectStateDir: string) => {
     return updated;
   };
 
+  const assignOwner = (
+    goalId: string,
+    owner: { agentId: string; tentacleId: string },
+  ): Goal | null => {
+    const snapshot = readSnapshot();
+    const index = snapshot.goals.findIndex((goal) => goal.id === goalId);
+    if (index < 0) {
+      return null;
+    }
+
+    const existing = snapshot.goals[index];
+    if (!existing) {
+      return null;
+    }
+    const updated: Goal = {
+      ...existing,
+      ownerAgentId: owner.agentId,
+      tentacleId: owner.tentacleId,
+      updatedAt: new Date().toISOString(),
+    };
+    const goals = [...snapshot.goals];
+    goals[index] = updated;
+    writeSnapshot({ goals });
+    return updated;
+  };
+
   return {
+    assignOwner,
     create,
     find,
     goalsPath,

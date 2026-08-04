@@ -82,6 +82,7 @@ export const GoalCommandCenter = () => {
   const [successCriteria, setSuccessCriteria] = useState("");
   const [constraints, setConstraints] = useState("");
   const [evidenceDrafts, setEvidenceDrafts] = useState<Record<string, string>>({});
+  const [ownerDrafts, setOwnerDrafts] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -164,6 +165,29 @@ export const GoalCommandCenter = () => {
       await load();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to update the goal.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const assignOwner = async (goal: Goal) => {
+    const ownerAgentId = ownerDrafts[goal.id] ?? goal.ownerAgentId ?? "";
+    if (!ownerAgentId || ownerAgentId === goal.ownerAgentId) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch(buildGoalItemUrl(goal.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ ownerAgentId }),
+      });
+      if (!response.ok) throw new Error(await readError(response, "Unable to assign the goal."));
+      setOwnerDrafts((current) => {
+        const { [goal.id]: _assignedOwner, ...remaining } = current;
+        return remaining;
+      });
+      await load();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to assign the goal.");
     } finally {
       setIsSaving(false);
     }
@@ -323,6 +347,45 @@ export const GoalCommandCenter = () => {
                     </dd>
                   </div>
                 </dl>
+                <section className="goal-command-owner">
+                  <strong>Responsible role</strong>
+                  <div>
+                    <select
+                      aria-label={`Owner for ${goal.title}`}
+                      onChange={(event) => {
+                        const selectedOwnerAgentId = event.currentTarget.value;
+                        setOwnerDrafts((current) => ({
+                          ...current,
+                          [goal.id]: selectedOwnerAgentId,
+                        }));
+                      }}
+                      value={ownerDrafts[goal.id] ?? goal.ownerAgentId ?? ""}
+                    >
+                      <option value="">Select a permanent role</option>
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.title}
+                        </option>
+                      ))}
+                    </select>
+                    <ActionButton
+                      disabled={
+                        isSaving ||
+                        !(ownerDrafts[goal.id] ?? goal.ownerAgentId) ||
+                        (ownerDrafts[goal.id] ?? goal.ownerAgentId) === goal.ownerAgentId
+                      }
+                      onClick={() => void assignOwner(goal)}
+                      size="dense"
+                      variant="info"
+                    >
+                      Assign role
+                    </ActionButton>
+                  </div>
+                  <small>
+                    Updates the goal's responsible role and scoped tentacle. It never launches an
+                    agent.
+                  </small>
+                </section>
                 <section className="goal-command-workflow">
                   <strong>Workflow handoff</strong>
                   {linkedWorkflow ? (

@@ -132,19 +132,45 @@ export const handleGoalItemRoute: ApiRouteHandler = async (
       ? (bodyReadResult.payload as Record<string, unknown>)
       : {};
   const rawStatus = payload.status;
-  if (typeof rawStatus !== "string" || !GOAL_STATUSES.has(rawStatus as GoalStatus)) {
+  const hasStatus = typeof rawStatus === "string";
+  const ownerAgentId = typeof payload.ownerAgentId === "string" ? payload.ownerAgentId.trim() : "";
+  const hasOwnerAssignment = ownerAgentId.length > 0;
+  if (!hasStatus && !hasOwnerAssignment) {
+    writeJson(
+      response,
+      400,
+      { error: "Provide a valid status or a permanent goal owner." },
+      corsOrigin,
+    );
+    return true;
+  }
+  if (hasStatus && !GOAL_STATUSES.has(rawStatus as GoalStatus)) {
     writeJson(response, 400, { error: "status must be a valid goal status." }, corsOrigin);
+    return true;
+  }
+  if (hasStatus && hasOwnerAssignment) {
+    writeJson(
+      response,
+      400,
+      { error: "Update a goal status or owner in separate requests." },
+      corsOrigin,
+    );
+    return true;
+  }
+
+  const owner = hasOwnerAssignment ? findAgentRosterRole(ownerAgentId) : null;
+  if (hasOwnerAssignment && !owner) {
+    writeJson(response, 400, { error: "Goal owner must be a permanent agent role." }, corsOrigin);
     return true;
   }
 
   const goalId = decodeURIComponent(match[1] ?? "");
   let goal: Goal | null;
   try {
-    goal = createGoalStore(projectStateDir).updateStatus(
-      goalId,
-      rawStatus as GoalStatus,
-      payload.evidence,
-    );
+    const goalStore = createGoalStore(projectStateDir);
+    goal = owner
+      ? goalStore.assignOwner(goalId, { agentId: owner.id, tentacleId: owner.tentacleId })
+      : goalStore.updateStatus(goalId, rawStatus as GoalStatus, payload.evidence);
     if (!goal) {
       writeJson(response, 404, { error: "Goal not found." }, corsOrigin);
       return true;
@@ -159,8 +185,10 @@ export const handleGoalItemRoute: ApiRouteHandler = async (
     return true;
   }
 
-  runtime.appendAuditEvent("goal.status_changed", {
-    payload: { goalId: goal.id, status: goal.status, evidenceCount: goal.evidence.length },
+  runtime.appendAuditEvent(owner ? "goal.owner_assigned" : "goal.status_changed", {
+    payload: owner
+      ? { goalId: goal.id, ownerAgentId: owner.id, tentacleId: owner.tentacleId }
+      : { goalId: goal.id, status: goal.status, evidenceCount: goal.evidence.length },
   });
   writeJson(response, 200, goal, corsOrigin);
   return true;

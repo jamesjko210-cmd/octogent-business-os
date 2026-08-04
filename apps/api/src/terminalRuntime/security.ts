@@ -71,6 +71,7 @@ export type AuditEventType =
   | "channel.message_queued"
   | "channel.message_delivered"
   | "channel.message_rejected"
+  | "channel.orphaned_messages_pruned"
   | "agent_inbox.message_queued"
   | "agent_inbox.message_delivered"
   | "telegram.message_queued"

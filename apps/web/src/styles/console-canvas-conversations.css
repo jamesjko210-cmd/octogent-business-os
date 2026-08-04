@@ -106,15 +106,32 @@
   font-size: 0.82rem;
 }
 
-.agent-handoffs-panel header > span,
+.agent-handoffs-panel header > div:last-child,
+.agent-handoffs-panel header > div:last-child > span,
 .agent-handoffs-list small {
   color: #8192aa;
   font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
   font-size: 0.62rem;
 }
 
+.agent-handoffs-panel header > div:last-child {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.agent-handoffs-panel header > div:last-child .action-button {
+  font-size: 0.58rem;
+}
+
 .agent-handoffs-error {
   color: #ffbaba;
+  font-size: 0.7rem;
+  margin-top: 0.35rem !important;
+}
+
+.agent-handoffs-notice {
+  color: #9fd6ac;
   font-size: 0.7rem;
   margin-top: 0.35rem !important;
 }

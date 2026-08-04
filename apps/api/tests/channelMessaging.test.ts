@@ -148,4 +148,63 @@ describe("createChannelMessaging", () => {
     expect(message?.content).not.toContain("token-value");
     expect(message?.content.length).toBe(MAX_CHANNEL_MESSAGE_LENGTH);
   });
+
+  it("prunes only queued handoffs for a deleted terminal and preserves delivered history", () => {
+    const stateDir = createStateDir();
+    const terminals = new Map<string, PersistedTerminal>([
+      ["removed-agent", createTerminal("removed-agent")],
+    ]);
+    const sessions = new Map<string, TerminalSession>([
+      [
+        "removed-agent",
+        {
+          terminalId: "removed-agent",
+          tentacleId: "removed-agent",
+          pty: {} as TerminalSession["pty"],
+          clients: new Set(),
+          directListeners: new Set(),
+          cols: 80,
+          rows: 24,
+          agentState: "idle",
+          stateTracker: {} as TerminalSession["stateTracker"],
+          isBootstrapCommandSent: true,
+          scrollbackChunks: [],
+          scrollbackBytes: 0,
+        },
+      ],
+    ]);
+    const appendAuditEvent = vi.fn();
+    const runtime = createChannelMessaging({
+      stateDir,
+      terminals,
+      sessions,
+      writeInput: vi.fn(),
+      appendAuditEvent,
+    });
+
+    const deliveredMessage = runtime.sendChannelMessage(
+      "removed-agent",
+      "operator",
+      "Keep this delivered handoff as history.",
+    );
+    sessions.delete("removed-agent");
+    const queuedMessage = runtime.sendChannelMessage(
+      "removed-agent",
+      "operator",
+      "Remove this queued handoff after the target is deleted.",
+    );
+    terminals.delete("removed-agent");
+
+    expect(runtime.pruneOrphanedChannelMessages()).toEqual([queuedMessage?.messageId]);
+    expect(runtime.listAllChannelMessages()).toEqual([
+      expect.objectContaining({
+        messageId: deliveredMessage?.messageId,
+        delivered: true,
+        content: "Keep this delivered handoff as history.",
+      }),
+    ]);
+    expect(appendAuditEvent).toHaveBeenCalledWith("channel.orphaned_messages_pruned", {
+      payload: { messageCount: 1 },
+    });
+  });
 });

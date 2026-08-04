@@ -674,6 +674,59 @@ describe("createApiServer", () => {
     });
   });
 
+  it("cleans only undeliverable queued handoffs after their target terminal is deleted", async () => {
+    const baseUrl = await startServer();
+    const terminalResponse = await fetch(`${baseUrl}/api/terminals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        terminalId: "removed-handoff-target",
+        tentacleId: "game-business",
+        name: "Temporary handoff target",
+        workspaceMode: "worktree",
+        agentProvider: "codex",
+      }),
+    });
+    expect(terminalResponse.status).toBe(201);
+
+    const queuedResponse = await fetch(`${baseUrl}/api/channels/removed-handoff-target/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "This queue should be cleaned after its target is removed.",
+      }),
+    });
+    expect(queuedResponse.status).toBe(201);
+    const queuedMessage = (await queuedResponse.json()) as { messageId: string };
+
+    const deleteResponse = await fetch(`${baseUrl}/api/terminals/removed-handoff-target`, {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status).toBe(204);
+
+    const rejectedMethodResponse = await fetch(`${baseUrl}/api/channels/prune`);
+    expect(rejectedMethodResponse.status).toBe(405);
+
+    const pruneResponse = await fetch(`${baseUrl}/api/channels/prune`, { method: "POST" });
+    expect(pruneResponse.status).toBe(200);
+    await expect(pruneResponse.json()).resolves.toEqual({
+      prunedMessageIds: [queuedMessage.messageId],
+    });
+
+    const handoffsResponse = await fetch(`${baseUrl}/api/channels`);
+    await expect(handoffsResponse.json()).resolves.toEqual({ messages: [] });
+
+    const auditResponse = await fetch(`${baseUrl}/api/audit`);
+    await expect(auditResponse.json()).resolves.toEqual({
+      events: expect.arrayContaining([
+        expect.objectContaining({
+          eventType: "channel.orphaned_messages_pruned",
+          payload: { messageCount: 1 },
+        }),
+      ]),
+    });
+  });
+
   it("keeps registered permanent roles prepared until a provider session is running", async () => {
     const baseUrl = await startServer();
 

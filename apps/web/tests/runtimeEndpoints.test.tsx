@@ -4,6 +4,7 @@ import {
   buildAgentRosterUrl,
   buildAllChannelMessagesUrl,
   buildChannelMessagesUrl,
+  buildChannelPruneUrl,
   buildClaudeUsageUrl,
   buildCodexUsageUrl,
   buildConversationExportUrl,
@@ -147,6 +148,7 @@ describe("runtimeEndpoints", () => {
   it("builds conversations URLs on same origin by default", () => {
     expect(buildConversationsUrl()).toBe("/api/conversations");
     expect(buildAllChannelMessagesUrl()).toBe("/api/channels");
+    expect(buildChannelPruneUrl()).toBe("/api/channels/prune");
     expect(buildTelegramStatusUrl()).toBe("/api/telegram/status");
     expect(buildOperatorUpdatesUrl()).toBe("/api/operator-updates");
     expect(buildChannelMessagesUrl("terminal-1")).toBe("/api/channels/terminal-1/messages");
@@ -180,6 +182,9 @@ describe("runtimeEndpoints", () => {
     );
     expect(buildAllChannelMessagesUrl("https://runtime.example.com")).toBe(
       "https://runtime.example.com/api/channels",
+    );
+    expect(buildChannelPruneUrl("https://runtime.example.com")).toBe(
+      "https://runtime.example.com/api/channels/prune",
     );
     expect(buildTelegramStatusUrl("https://runtime.example.com")).toBe(
       "https://runtime.example.com/api/telegram/status",

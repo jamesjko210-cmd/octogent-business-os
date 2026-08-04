@@ -268,12 +268,23 @@ export const handlePromptItemRoute: ApiRouteHandler = async (
 // ─── Channel routes ───────────────────────────────────────────────────────
 
 const CHANNELS_PATH = "/api/channels";
+const CHANNELS_PRUNE_PATH = "/api/channels/prune";
 const CHANNEL_MESSAGES_PATH_PATTERN = /^\/api\/channels\/([^/]+)\/messages$/;
 
 export const handleChannelMessagesRoute: ApiRouteHandler = async (
   { request, response, requestUrl, corsOrigin },
   { runtime },
 ) => {
+  if (requestUrl.pathname === CHANNELS_PRUNE_PATH) {
+    if (request.method !== "POST") {
+      writeMethodNotAllowed(response, corsOrigin);
+      return true;
+    }
+    const prunedMessageIds = runtime.pruneOrphanedChannelMessages();
+    writeJson(response, 200, { prunedMessageIds }, corsOrigin);
+    return true;
+  }
+
   if (requestUrl.pathname === CHANNELS_PATH) {
     if (request.method !== "GET") {
       writeMethodNotAllowed(response, corsOrigin);

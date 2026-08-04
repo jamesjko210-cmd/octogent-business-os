@@ -184,6 +184,36 @@ export const createChannelMessaging = (deps: {
         .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
     },
 
+    pruneOrphanedChannelMessages(): string[] {
+      const prunedMessageIds: string[] = [];
+      for (const [terminalId, messages] of channelQueues) {
+        if (terminals.has(terminalId)) {
+          continue;
+        }
+        // Keep delivered messages as durable handoff history; only a message that can no
+        // longer reach its deleted target is safe to remove.
+        const orphanedQueuedMessages = messages.filter((message) => !message.delivered);
+        if (orphanedQueuedMessages.length === 0) {
+          continue;
+        }
+        const deliveredMessages = messages.filter((message) => message.delivered);
+        if (deliveredMessages.length === 0) {
+          channelQueues.delete(terminalId);
+        } else {
+          channelQueues.set(terminalId, deliveredMessages);
+        }
+        prunedMessageIds.push(...orphanedQueuedMessages.map((message) => message.messageId));
+      }
+      if (prunedMessageIds.length === 0) {
+        return [];
+      }
+      persistChannelMessages();
+      appendAuditEvent?.("channel.orphaned_messages_pruned", {
+        payload: { messageCount: prunedMessageIds.length },
+      });
+      return prunedMessageIds;
+    },
+
     deliverChannelMessages,
   };
 };

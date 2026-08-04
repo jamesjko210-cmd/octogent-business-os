@@ -190,4 +190,48 @@ describe("ConversationsPrimaryView", () => {
     expect(screen.getByText("research-agent")).toBeInTheDocument();
     expect(screen.getByText("codex-executor-shell")).toBeInTheDocument();
   });
+
+  it("cleans only orphaned queued handoffs after an explicit confirmation", async () => {
+    let handoffs = [
+      {
+        messageId: "msg-9",
+        fromTerminalId: "research-agent",
+        toTerminalId: "deleted-terminal",
+        content: "This queued handoff cannot reach its removed target.",
+        timestamp: "2026-08-04T00:00:00.000Z",
+        delivered: false,
+      },
+    ];
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/agents") return jsonResponse({ agents: roles });
+      if (url === "/api/channels") return jsonResponse({ messages: handoffs });
+      if (url === "/api/channels/prune" && init?.method === "POST") {
+        handoffs = [];
+        return jsonResponse({ prunedMessageIds: ["msg-9"] });
+      }
+      if (url === "/api/agents/codex-executor/inbox") return jsonResponse({ messages: [] });
+      return jsonResponse({ error: `Unexpected request: ${url}` }, 500);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConversationsPrimaryView columns={[]} enabled />);
+
+    expect(
+      await screen.findByText("This queued handoff cannot reach its removed target."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clean orphaned handoffs" }));
+    expect(
+      await screen.findByLabelText("Clean orphaned handoffs confirmation"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm clean orphaned handoffs" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/channels/prune", { method: "POST" });
+    });
+    expect(await screen.findByText("Removed 1 orphaned queued handoff.")).toBeInTheDocument();
+    expect(
+      screen.queryByText("This queued handoff cannot reach its removed target."),
+    ).not.toBeInTheDocument();
+  });
 });

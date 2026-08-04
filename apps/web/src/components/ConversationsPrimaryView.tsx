@@ -8,10 +8,12 @@ import {
   buildAgentRosterUrl,
   buildAllChannelMessagesUrl,
   buildChannelMessagesUrl,
+  buildChannelPruneUrl,
 } from "../runtime/runtimeEndpoints";
 import { ClearAllConversationsDialog } from "./ClearAllConversationsDialog";
 import { SidebarConversationsList } from "./SidebarConversationsList";
 import { ActionButton } from "./ui/ActionButton";
+import { ConfirmationDialog } from "./ui/ConfirmationDialog";
 import { MarkdownContent } from "./ui/MarkdownContent";
 
 type ConversationsPrimaryViewProps = {
@@ -82,6 +84,9 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [agents, setAgents] = useState<AgentRosterEntry[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPruneDialogOpen, setIsPruneDialogOpen] = useState(false);
+  const [isPruning, setIsPruning] = useState(false);
+  const [pruneNotice, setPruneNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -131,6 +136,38 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
   );
   const roleLabel = (terminalId: string) => roleByTerminalId.get(terminalId)?.title ?? terminalId;
 
+  const pruneOrphanedHandoffs = async () => {
+    setIsPruning(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch(buildChannelPruneUrl(), { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await readChannelError(response));
+      }
+      const payload = (await response.json()) as { prunedMessageIds?: unknown };
+      const prunedMessageIds = Array.isArray(payload.prunedMessageIds)
+        ? payload.prunedMessageIds.filter(
+            (messageId): messageId is string => typeof messageId === "string",
+          )
+        : [];
+      setMessages((currentMessages) =>
+        currentMessages.filter((message) => !prunedMessageIds.includes(message.messageId)),
+      );
+      setPruneNotice(
+        prunedMessageIds.length === 0
+          ? "No orphaned queued handoffs needed cleanup."
+          : `Removed ${prunedMessageIds.length} orphaned queued handoff${prunedMessageIds.length === 1 ? "" : "s"}.`,
+      );
+      setIsPruneDialogOpen(false);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to clean orphaned handoffs.",
+      );
+    } finally {
+      setIsPruning(false);
+    }
+  };
+
   return (
     <section className="agent-handoffs-panel" aria-label="Recent agent handoffs">
       <header>
@@ -138,9 +175,21 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
           <p className="agent-comms-kicker">Cross-Agent Handoffs</p>
           <h3>Recent coordination</h3>
         </div>
-        <span>{messages.length} recorded</span>
+        <div>
+          <span>{messages.length} recorded</span>
+          <ActionButton
+            aria-label="Clean orphaned handoffs"
+            onClick={() => setIsPruneDialogOpen(true)}
+            size="dense"
+            type="button"
+            variant="accent"
+          >
+            Clean stale queue
+          </ActionButton>
+        </div>
       </header>
       {errorMessage ? <p className="agent-handoffs-error">{errorMessage}</p> : null}
+      {pruneNotice ? <p className="agent-handoffs-notice">{pruneNotice}</p> : null}
       <ol className="agent-handoffs-list">
         {messages.length === 0 ? (
           <li>No agent-to-agent handoffs recorded yet.</li>
@@ -165,6 +214,23 @@ const AgentHandoffsPanel = ({ enabled }: { enabled: boolean }) => {
           ))
         )}
       </ol>
+      {isPruneDialogOpen ? (
+        <ConfirmationDialog
+          ariaLabel="Clean orphaned handoffs confirmation"
+          confirmLabel={isPruning ? "Cleaning..." : "Clean stale queue"}
+          isBusy={isPruning}
+          isConfirmDisabled={isPruning}
+          message="Remove queued handoffs whose target terminal was deleted. Delivered handoffs, agent records, goals, memory, and audit history stay intact."
+          onCancel={() => {
+            if (!isPruning) setIsPruneDialogOpen(false);
+          }}
+          onConfirm={() => {
+            void pruneOrphanedHandoffs();
+          }}
+          title="Clean orphaned handoffs"
+          warning="This permanently removes only undeliverable queued handoffs from the local communication queue."
+        />
+      ) : null}
     </section>
   );
 };

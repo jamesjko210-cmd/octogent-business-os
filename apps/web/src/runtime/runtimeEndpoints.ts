@@ -410,6 +410,15 @@ export const buildAllChannelMessagesUrl = (runtimeBaseUrl = readRuntimeBaseUrl()
   return buildAbsoluteUrl(runtimeBaseUrl, path);
 };
 
+export const buildChannelPruneUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
+  const path = "/api/channels/prune";
+  if (!runtimeBaseUrl) {
+    return path;
+  }
+
+  return buildAbsoluteUrl(runtimeBaseUrl, path);
+};
+
 export const buildTelegramStatusUrl = (runtimeBaseUrl = readRuntimeBaseUrl()) => {
   const path = "/api/telegram/status";
   if (!runtimeBaseUrl) {

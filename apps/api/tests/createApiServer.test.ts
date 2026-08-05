@@ -674,7 +674,7 @@ describe("createApiServer", () => {
     });
   });
 
-  it("cleans only undeliverable queued handoffs after their target terminal is deleted", async () => {
+  it("automatically cleans only undeliverable queued handoffs after their target terminal is deleted", async () => {
     const baseUrl = await startServer();
     const terminalResponse = await fetch(`${baseUrl}/api/terminals`, {
       method: "POST",
@@ -697,21 +697,22 @@ describe("createApiServer", () => {
       }),
     });
     expect(queuedResponse.status).toBe(201);
-    const queuedMessage = (await queuedResponse.json()) as { messageId: string };
+    await queuedResponse.json();
 
     const deleteResponse = await fetch(`${baseUrl}/api/terminals/removed-handoff-target`, {
       method: "DELETE",
     });
     expect(deleteResponse.status).toBe(204);
 
+    const handoffsAfterDeleteResponse = await fetch(`${baseUrl}/api/channels`);
+    await expect(handoffsAfterDeleteResponse.json()).resolves.toEqual({ messages: [] });
+
     const rejectedMethodResponse = await fetch(`${baseUrl}/api/channels/prune`);
     expect(rejectedMethodResponse.status).toBe(405);
 
     const pruneResponse = await fetch(`${baseUrl}/api/channels/prune`, { method: "POST" });
     expect(pruneResponse.status).toBe(200);
-    await expect(pruneResponse.json()).resolves.toEqual({
-      prunedMessageIds: [queuedMessage.messageId],
-    });
+    await expect(pruneResponse.json()).resolves.toEqual({ prunedMessageIds: [] });
 
     const handoffsResponse = await fetch(`${baseUrl}/api/channels`);
     await expect(handoffsResponse.json()).resolves.toEqual({ messages: [] });
@@ -5904,6 +5905,13 @@ describe("createApiServer", () => {
 
     const baseUrl = await startServer({ workspaceCwd });
 
+    const queuedResponse = await fetch(`${baseUrl}/api/channels/terminal-1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Remove this handoff when the stale terminal is pruned." }),
+    });
+    expect(queuedResponse.status).toBe(201);
+
     const stopResponse = await fetch(`${baseUrl}/api/terminals/terminal-1/stop`, {
       method: "POST",
       headers: { Accept: "application/json" },
@@ -5924,6 +5932,19 @@ describe("createApiServer", () => {
     expect(pruneResponse.status).toBe(200);
     await expect(pruneResponse.json()).resolves.toEqual({
       prunedTerminalIds: ["terminal-1"],
+    });
+
+    const handoffsResponse = await fetch(`${baseUrl}/api/channels`);
+    await expect(handoffsResponse.json()).resolves.toEqual({ messages: [] });
+
+    const auditResponse = await fetch(`${baseUrl}/api/audit`);
+    await expect(auditResponse.json()).resolves.toEqual({
+      events: expect.arrayContaining([
+        expect.objectContaining({
+          eventType: "channel.orphaned_messages_pruned",
+          payload: { messageCount: 1 },
+        }),
+      ]),
     });
 
     const listResponse = await fetch(`${baseUrl}/api/terminal-snapshots`, {

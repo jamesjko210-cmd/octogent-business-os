@@ -854,6 +854,10 @@ export const createTerminalRuntime = ({
         terminals.delete(terminalId);
       }
 
+      // A removed terminal cannot receive queued handoffs. Keep delivered handoffs as
+      // evidence, but clear undeliverable queue entries as part of the same cleanup.
+      channelMessaging.pruneOrphanedChannelMessages();
+
       persistRegistry();
       for (const terminalId of prunedTerminalIds) {
         broadcastTerminalEvent({
@@ -892,6 +896,10 @@ export const createTerminalRuntime = ({
           },
         });
       }
+
+      // Deletion is final for the terminal, so do not leave messages that can never be
+      // delivered behind. The channel runtime preserves already delivered history.
+      channelMessaging.pruneOrphanedChannelMessages();
 
       persistRegistry();
       for (const cascadeTerminalId of cascadeTerminalIds) {

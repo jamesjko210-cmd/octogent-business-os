@@ -22,7 +22,8 @@ export type StartupPrerequisiteAvailability = Record<
   | "custom"
   | "git"
   | "gh"
-  | "curl",
+  | "curl"
+  | "numbat",
   boolean
 >;
 
@@ -104,6 +105,7 @@ export const collectStartupPrerequisiteReport = (
     git: isAvailable("git"),
     gh: isAvailable("gh"),
     curl: isAvailable("curl"),
+    numbat: isAvailable("numbat"),
   };
 
   const errors: StartupPrerequisiteIssue[] = [];

@@ -71,6 +71,19 @@ const buildSetupSnapshot = (
       command: null,
     },
     {
+      id: "check-numbat",
+      title: "Check Numbat monitor",
+      description:
+        "Confirm optional local AI-agent security monitoring without installing hooks or enabling blocking.",
+      complete: false,
+      required: false,
+      actionLabel: "Check Numbat",
+      statusText: "Numbat is not installed.",
+      guidance:
+        "Install Numbat only if you want local agent-security observation. Do not enable hooks or enforcement without a separate review.",
+      command: "numbat agents",
+    },
+    {
       id: "create-tentacles",
       title: "Create tentacles",
       description: "Create at least one tentacle before launching a coding agent.",

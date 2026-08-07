@@ -1,4 +1,9 @@
-import { type TerminalSnapshot, buildTerminalList, isAgentRuntimeState } from "@octogent/core";
+import {
+  type TerminalSnapshot,
+  type WorkspaceSetupStepId,
+  buildTerminalList,
+  isAgentRuntimeState,
+} from "@octogent/core";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { useBackendLivenessPolling } from "./app/hooks/useBackendLivenessPolling";
@@ -105,15 +110,8 @@ export const App = () => {
     refreshWorkspaceSetup,
     runWorkspaceSetupStep,
   } = useWorkspaceSetup();
-  const [runningWorkspaceSetupStepId, setRunningWorkspaceSetupStepId] = useState<
-    | "initialize-workspace"
-    | "ensure-gitignore"
-    | "check-claude"
-    | "check-git"
-    | "check-curl"
-    | "create-tentacles"
-    | null
-  >(null);
+  const [runningWorkspaceSetupStepId, setRunningWorkspaceSetupStepId] =
+    useState<WorkspaceSetupStepId | null>(null);
 
   const readColumns = useCallback(
     async (signal?: AbortSignal) => {
@@ -401,15 +399,7 @@ export const App = () => {
   }, []);
 
   const handleRunWorkspaceSetupStep = useCallback(
-    async (
-      stepId:
-        | "initialize-workspace"
-        | "ensure-gitignore"
-        | "check-claude"
-        | "check-git"
-        | "check-curl"
-        | "create-tentacles",
-    ) => {
+    async (stepId: WorkspaceSetupStepId) => {
       setRunningWorkspaceSetupStepId(stepId);
       try {
         await runWorkspaceSetupStep(stepId);

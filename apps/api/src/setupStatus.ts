@@ -57,12 +57,14 @@ export const readWorkspaceSetupSnapshot = (
   const isClaudeVerified = Boolean(verifiedSteps["check-claude"]);
   const isGitVerified = Boolean(verifiedSteps["check-git"]);
   const isCurlVerified = Boolean(verifiedSteps["check-curl"]);
+  const isNumbatVerified = Boolean(verifiedSteps["check-numbat"]);
   const hasClaudeCode = prerequisites.availability.claude;
   const codexAuthentication = readCodexCliAuthentication({
     isAvailable: (command) => (command === "codex" ? prerequisites.availability.codex : false),
   });
   const hasGit = prerequisites.availability.git;
   const hasCurl = prerequisites.availability.curl;
+  const hasNumbat = prerequisites.availability.numbat;
   const brain = (
     id: AgenticOsBrain["id"],
     label: string,
@@ -247,6 +249,26 @@ export const readWorkspaceSetupSnapshot = (
           : "Click to verify hook callback support on this machine."
         : "Install curl to restore Claude hook callbacks.",
       command: hasCurl ? null : "curl --version",
+    },
+    {
+      id: "check-numbat",
+      title: "Check Numbat monitor",
+      description:
+        "Confirm optional local AI-agent security monitoring without installing hooks or enabling blocking.",
+      complete: hasNumbat && isNumbatVerified,
+      required: false,
+      actionLabel: "Check Numbat",
+      statusText: hasNumbat
+        ? isNumbatVerified
+          ? "Numbat monitor-only readiness is confirmed."
+          : "Review Numbat before enabling any monitor-only observation."
+        : "Numbat is not installed.",
+      guidance: hasNumbat
+        ? isNumbatVerified
+          ? null
+          : "This only records an operator review. It does not install a hook, scan sessions, or enable blocking."
+        : "Install Numbat only if you want local agent-security observation. Do not enable hooks or enforcement without a separate review.",
+      command: hasNumbat ? null : "numbat agents",
     },
     {
       id: "create-tentacles",

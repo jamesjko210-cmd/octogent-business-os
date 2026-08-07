@@ -84,15 +84,7 @@ export const DeckPrimaryView = ({
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const agentMenuRef = useRef<HTMLDivElement>(null);
   const [isLaunchingAgent, setIsLaunchingAgent] = useState(false);
-  const [runningSetupStepId, setRunningSetupStepId] = useState<
-    | "initialize-workspace"
-    | "ensure-gitignore"
-    | "check-claude"
-    | "check-git"
-    | "check-curl"
-    | "create-tentacles"
-    | null
-  >(null);
+  const [runningSetupStepId, setRunningSetupStepId] = useState<WorkspaceSetupStepId | null>(null);
 
   // Fetch tentacle list
   const fetchTentacles = useCallback(async () => {
@@ -226,15 +218,7 @@ export const DeckPrimaryView = ({
   }, [selectedAgent, fetchTentacles]);
 
   const handleRunSetupStep = useCallback(
-    async (
-      stepId:
-        | "initialize-workspace"
-        | "ensure-gitignore"
-        | "check-claude"
-        | "check-git"
-        | "check-curl"
-        | "create-tentacles",
-    ) => {
+    async (stepId: WorkspaceSetupStepId) => {
       setRunningSetupStepId(stepId);
       try {
         await onRunWorkspaceSetupStep(stepId);

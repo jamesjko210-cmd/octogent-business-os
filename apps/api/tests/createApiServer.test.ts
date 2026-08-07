@@ -3398,6 +3398,11 @@ describe("createApiServer", () => {
       expect.arrayContaining([
         expect.objectContaining({ id: "initialize-workspace", complete: false }),
         expect.objectContaining({ id: "ensure-gitignore", complete: false }),
+        expect.objectContaining({
+          id: "check-numbat",
+          title: "Check Numbat monitor",
+          required: false,
+        }),
         expect.objectContaining({ id: "create-tentacles", complete: false }),
       ]),
     );
@@ -3420,6 +3425,19 @@ describe("createApiServer", () => {
           command: "OCTOGENT_STITCH_COMMAND",
         }),
       ]),
+    );
+
+    const numbatCheckResponse = await fetch(`${baseUrl}/api/setup/steps/check-numbat`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    expect(numbatCheckResponse.status).toBe(200);
+    await expect(numbatCheckResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({ id: "check-numbat", title: "Check Numbat monitor" }),
+        ]),
+      }),
     );
 
     const initializeResponse = await fetch(`${baseUrl}/api/setup/steps/initialize-workspace`, {

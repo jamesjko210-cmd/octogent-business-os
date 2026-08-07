@@ -6,6 +6,7 @@ This log records verified Octogent changes before they are committed and publish
 
 ### Added
 
+- Workspace Setup now includes an optional **Check Numbat monitor** step. It detects a locally installed Numbat binary and records an operator review only; it does not install hooks, scan sessions, enable blocking, or change an agent configuration.
 - Terminal deletion and reviewed stale-terminal pruning now automatically remove only queued handoffs that have become undeliverable. Delivered handoffs remain durable history, and each cleanup writes the existing local audit event.
 - Agent Directory now includes **Clean up ended agents**, a reviewed bulk release for stale, stopped, or exited temporary terminal records. It does not remove permanent roles, role inboxes, shared memory, or audit history.
 - Project Swarms now protects the default Game Business and Research lanes while allowing an operator to remove a finished custom swarm through an explicit confirmation. A custom lane cannot be removed while one of its assigned roles is prepared, ready, waiting, or working. Removing an eligible lane preserves permanent roles, terminal records, inboxes, shared memory, and audit history.
@@ -18,6 +19,7 @@ This log records verified Octogent changes before they are committed and publish
 
 ### Verification
 
+- Latest monitor-readiness validation passed: core 7/7, API 239/239, and web 129/129 tests; all TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
 - Latest handoff-lifecycle regression passed: API 239/239 tests and API TypeScript, plus full Biome and `git diff --check`.
 - Latest swarm-operations audit passed: core 6/6, API 237/237, and web 128/128 tests. Core/API/web TypeScript checks, the web production build, full Biome, and `git diff --check` passed.
 

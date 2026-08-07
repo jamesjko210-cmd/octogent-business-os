@@ -32,6 +32,7 @@ const isWorkspaceSetupStepId = (value: string): value is WorkspaceSetupStepId =>
   value === "check-claude" ||
   value === "check-git" ||
   value === "check-curl" ||
+  value === "check-numbat" ||
   value === "create-tentacles";
 
 export const handleWorkspaceSetupRoute: ApiRouteHandler = async (
@@ -68,7 +69,12 @@ export const handleWorkspaceSetupRoute: ApiRouteHandler = async (
     initializeWorkspaceFiles(workspaceCwd);
   } else if (stepId === "ensure-gitignore") {
     ensureWorkspaceGitignore(workspaceCwd);
-  } else if (stepId === "check-claude" || stepId === "check-git" || stepId === "check-curl") {
+  } else if (
+    stepId === "check-claude" ||
+    stepId === "check-git" ||
+    stepId === "check-curl" ||
+    stepId === "check-numbat"
+  ) {
     markSetupStepVerified(projectStateDir, stepId);
   }
 

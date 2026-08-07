@@ -21,6 +21,7 @@ working local features from choices that require the operator before they can be
 | GitHub history | Ready and publishing | The customized project is public at `https://github.com/jamesjko210-cmd/octogent-business-os` on `main`. Each verified checkpoint is committed and pushed after review; the [publication guide](../guides/user-owned-github-publication.md) documents the boundary for changing remotes or release scope. |
 | Verified local session history | Ready locally | Settings projects append-only audit events into a safe, read-only timeline before any GitHub remote is configured. |
 | Obsidian vault memory | Ready locally | Live permanent roles can retrieve redacted project-memory snippets, append bounded updates to their own fixed note, and contribute to one fixed shared team timeline through audited local capabilities. |
+| Numbat security observation | Ready to review | Workspace Setup can detect a local Numbat binary and record an explicit monitor-only review. It does not install hooks, scan sessions, enable blocking, or send records. |
 | Telegram bridge | Ready to configure | A local long-polling bridge accepts only allowlisted chats, feeds the durable role inbox, and returns concise role updates only after a trusted human requests `/updates`. It remains inactive until a private bot token and trusted chat IDs are supplied outside the repository. |
 | External AI-provider integration | Not selected | The dashboard distinguishes a locally available launcher, prepared terminal, shell-started terminal, and provider-unverified state. Each real provider still needs its own reviewed login and response check. |
 
@@ -39,4 +40,4 @@ working local features from choices that require the operator before they can be
 
 ## Verification baseline
 
-The current local regression baseline is 6 core tests, 236 API tests, and 127 web tests. Core, API, and web TypeScript checks plus a full Biome check and `git diff --check` passed. The web production build passed.
+The current local regression baseline is 7 core tests, 239 API tests, and 129 web tests. Core, API, and web TypeScript checks plus a full Biome check and `git diff --check` passed. The web production build passed.

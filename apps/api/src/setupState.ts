@@ -3,7 +3,12 @@ import { join } from "node:path";
 import type { WorkspaceSetupStepId } from "@octogent/core";
 
 const SETUP_STATE_RELATIVE_PATH = join("state", "setup.json");
-const VERIFIED_SETUP_STEP_IDS = ["check-claude", "check-git", "check-curl"] as const;
+const VERIFIED_SETUP_STEP_IDS = [
+  "check-claude",
+  "check-git",
+  "check-curl",
+  "check-numbat",
+] as const;
 
 type VerifiedSetupStepId = (typeof VERIFIED_SETUP_STEP_IDS)[number];
 

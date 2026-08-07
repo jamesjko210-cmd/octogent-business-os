@@ -4,6 +4,7 @@ export type WorkspaceSetupStepId =
   | "check-claude"
   | "check-git"
   | "check-curl"
+  | "check-numbat"
   | "create-tentacles";
 
 export type WorkspaceSetupStep = {
